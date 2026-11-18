@@ -1,0 +1,19 @@
+# Build output (root or nested modules)
+**/target/
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+!.env.example
