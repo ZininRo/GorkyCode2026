@@ -1,102 +1,99 @@
 # GorkyCode2026
 
-**GorkyCode2026** — корневой проект. **backend** — Spring Boot-приложение и Maven-модуль.
+Maven reactor + Spring Boot **3.5.6**, Java **17**, PostgreSQL **17**, Docker Compose.
 
-Основа взята из приложенного `pom.xml`: **Java 17, Spring Boot 3.5.6** и его список зависимостей. Добавлен Spring Boot Actuator для Docker healthcheck. PostgreSQL **17** работает в отдельном контейнере.
+- `backend/` — Spring Boot API (регистрация, вход, JWT, refresh/logout, профиль).
+- `docs/API_CONTRACT.md` + `docs/openapi.yaml` — согласованный контракт для React.
+- `APPLY_PATCH.md` — инструкция по установке добавленных/изменённых файлов (если применён патч).
 
-## Быстрый запуск
+## Первый запуск (Windows x86-64 или macOS Apple Silicon ARM64)
 
-Достаточно установленного **Docker Desktop** (Windows/macOS) или **Docker Engine + Compose v2** (Linux). Установка Maven и Java на хосте для контейнерного запуска не нужна.
+1. Установить Docker Desktop, включить режим Linux containers (Windows).
+2. Создать `.env` из `.env.example`, если его нет. Если `.env` уже существует — **добавить только новые переменные**, не перезаписывать существующие пароли.
+3. Сгенерировать криптографически случайный Base64-секрет минимум из 32 байт:
 
-Из каталога **GorkyCode2026**:
+   - Windows PowerShell 5.1+:
+
+     ```powershell
+     $bytes = New-Object byte[] 32
+     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+     $rng.GetBytes($bytes)
+     [Convert]::ToBase64String($bytes)
+     $rng.Dispose()
+     ```
+
+   - macOS: `openssl rand -base64 32`
+
+4. В `.env` поставить `AUTH_JWT_SECRET=<выведенная Base64-строка>` и `AUTH_COOKIE_SECURE=false`. Не публиковать `.env` в Git.
+5. В корне проекта выполнить:
+
+   ```bash
+   docker compose config
+   docker compose up --build -d
+   docker compose ps
+   docker compose logs --tail=100 backend
+   ```
+
+6. Проверить:
+   - `http://localhost:8080/api/v1/ping` → `{"status":"ok"}`
+   - `http://localhost:8080/actuator/health` → `{"status":"UP"}`
+   - `http://localhost:8080/swagger-ui/index.html` → Swagger UI
+
+> Если порт 8080 изменён через `APP_PORT`, нужно также изменить `AUTH_ALLOWED_ORIGINS` в `.env`, добавив фактический backend origin. По умолчанию разрешены `http://localhost:5173` и `http://localhost:8080`.
+
+## Auth API
+
+| Метод | URL | Ответ |
+|---|---|---|
+| POST | `/api/v1/auth/register` | 201, AuthResponse + HttpOnly refresh-cookie |
+| POST | `/api/v1/auth/login` | 200, AuthResponse + HttpOnly refresh-cookie |
+| POST | `/api/v1/auth/refresh` | 200, AuthResponse + новая refresh-cookie |
+| POST | `/api/v1/auth/logout` | 204, удаление refresh-cookie |
+| GET | `/api/v1/users/me` | 200, профиль; нужен Bearer JWT |
+| GET | `/api/v1/ping` | 200, `{"status":"ok"}` |
+
+Любой `POST /api/v1/auth/*` требует `Origin` из `AUTH_ALLOWED_ORIGINS` (CSRF-защита для cookie-запросов). Браузер выставляет Origin автоматически, в терминале добавляй его вручную.
+
+### Запрос регистрации (PowerShell)
+
+```powershell
+$body = @{displayName='Roman'; email='roman@example.com'; password='StrongPass123!'} | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://localhost:8080/api/v1/auth/register' -Method Post -ContentType 'application/json' -Headers @{ Origin = 'http://localhost:5173' } -Body $body -SessionVariable session
+```
+
+Для проверки refresh/logout проще использовать Postman или React с `credentials: 'include'`. JWT из `accessToken` передаётся в `Authorization: Bearer <token>` на `GET /api/v1/users/me`. Полные JSON-схемы в `docs/openapi.yaml`.
+
+## Тестирование
 
 ```bash
-docker compose up --build -d
-docker compose ps
-docker compose logs -f backend
+# Unit-тесты, доступен Docker Compose service без локальных Java/Maven
+ docker compose run --rm maven
+
+# Полный интеграционный тест с Testcontainers (Docker должен быть доступен Maven на хосте)
+ cd backend
+ mvn -B -ntp verify -Pintegration-tests
 ```
 
-После запуска:
+В Dockerfile на стадии сборки `mvn clean package` запускает быстрые unit-тесты; `AuthApiIT` отдельно запускается через профиль `integration-tests` (не требует настоящей production-БД, создаёт временный контейнер PostgreSQL). Для этих тестов необходимы JDK 17, Maven и доступный Docker Engine на машине, откуда запускается Maven.
 
-- API: http://localhost:8080/api/v1/ping — `{"status":"ok"}`
-- Healthcheck: http://localhost:8080/actuator/health — `{"status":"UP"}`
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
-- OpenAPI JSON: http://localhost:8080/v3/api-docs
+## Docker
 
-Если порт 8080 или 5432 занят, измените `APP_PORT` или `POSTGRES_PORT` в `.env`. Значения в `.env` — **только для локальной разработки**.
+- `backend/Dockerfile`: multi-stage Maven Java 17 + `eclipse-temurin:17-jre`; без привязки к `linux/amd64`.
+- База `postgres:17-alpine`, имя контейнерного хоста `db`, порт `5432`.
+- Healthcheck приложения: `curl`, установленный в runtime-образе.
+- Volume `postgres_data` хранит БД между перезапусками.
+- `docker compose down` **сохраняет** данные, а `docker compose down -v` **удаляет их безвозвратно**.
 
-## Полезные команды
+## Безопасность MVP и границы
 
-| Что сделать | Команда из корня |
-|---|---|
-| Запустить систему | `docker compose up --build -d` |
-| Посмотреть логи API | `docker compose logs -f backend` |
-| Запустить Maven-тесты в Docker | `docker compose run --rm maven` |
-| Собрать JAR в Docker | `docker compose run --rm maven mvn -B -ntp clean package` |
-| Открыть PostgreSQL | `docker compose exec db psql -U backend -d gorkycode2026` |
-| Остановить | `docker compose down` |
-| **Удалить БД и её данные** | `docker compose down -v` |
-
-При каждом изменении исходников пересобирайте образ: `docker compose up --build -d`.
-
-## Структура
-
-```text
-GorkyCode2026/
-├── pom.xml                        # Maven-агрегатор проекта
-├── compose.yaml                   # backend + PostgreSQL + Maven tools
-├── .env / .env.example
-├── README.md
-└── backend/
-    ├── pom.xml                    # Spring Boot; artifactId/name: backend
-    ├── Dockerfile
-    ├── http/requests.http
-    └── src/
-        ├── main/
-        │   ├── java/com/gorkycode2026/backend/
-        │   │   ├── BackendApplication.java
-        │   │   ├── api/PingController.java
-        │   │   └── config/SecurityConfig.java
-        │   └── resources/
-        │       ├── application.yml
-        │       └── db/migration/
-        └── test/java/com/gorkycode2026/backend/api/PingControllerTest.java
-```
-
-## База данных, безопасность и Swagger
-
-- Внутри Docker приложение подключается по имени хоста `db:5432`; с компьютера база доступна на `localhost:${POSTGRES_PORT}`.
-- Данные PostgreSQL сохраняются в именованном volume. `docker compose down` данные **сохраняет**, а `down -v` **удаляет**.
-- Схема управляется через **Flyway**. При появлении сущностей создайте миграцию `backend/src/main/resources/db/migration/V1__init.sql`; Hibernate настроен на `ddl-auto: validate`.
-- Spring Security из вашего `pom.xml` **подключён**. В стартовой конфигурации публичны только `/api/v1/ping`, health и Swagger; все прочие запросы запрещены до реализации аутентификации. Наличие OAuth2 Resource Server в зависимостях не означает, что JWT-проверка уже настроена.
-- Lombok, Web Push/VAPID, Bouncy Castle, Testcontainers и WireMock подключены как библиотеки из вашего `pom.xml`, но бизнес-логика их пока не использует.
-- Конфигурации и пароли предназначены для **локальной разработки**, не для эксплуатации в продакшене.
+- Секрет подписания JWT обязательно задать в `.env`; без него backend не запускается.
+- Access JWT 15 минут (только в памяти React), refresh-cookie HttpOnly, SameSite=Lax, Path `/api/v1/auth`, 7 дней.
+- Refresh-токены хранятся только как SHA-256 в БД и ротируются после каждого refresh.
+- Пароли хешируются с Argon2id.
+- Лимит 20 POST/мин на IP и маршрут для register/login/refresh — **локальный in-memory**; для нескольких реплик и production нужен gateway/Redis.
+- Logout отзывает refresh-токен, но **не** ранее выданный JWT до окончания его 15 минут.
+- Для production: HTTPS, `AUTH_COOKIE_SECURE=true`, реальные CORS origins, секреты в secret manager, централизованный лимитер, чистка таблицы refresh_tokens, наблюдаемость и CI/CD.
 
 ## IntelliJ IDEA
 
-1. В **File → Open** откройте **GorkyCode2026** (корневой каталог). IDEA увидит Maven-агрегатор `pom.xml` и модуль `backend`.
-2. Укажите **JDK 17** для работы в IDE (Docker сам содержит JDK 17 для сборки).
-3. Откройте терминал IDEA в корне и выполните `docker compose up --build -d`.
-4. Опционально для запуска из IDEA: сначала выполните `docker compose up -d db`, затем запускайте `BackendApplication.main()` с JDK 17; localhost-настройки уже есть в `application.yml`.
-
-### Плагины и компоненты IDEA
-
-- **Java** и **Maven** — встроенные, должны быть включены.
-- **Spring / Spring Boot** — дополнительная поддержка контекста и конфигураций; расширенные функции IDEA Ultimate.
-- **Docker** — управление контейнерами в IDE, необязательно: работает и `docker compose` из терминала.
-- **Database Tools and SQL** — обозреватель БД, SQL-консоль (по возможностям вашей редакции IDEA).
-- **Lombok** — при необходимости включите поддержку Lombok / annotation processing, поскольку эта зависимость есть в `backend/pom.xml`.
-- **.env files** — необязательная подсветка `.env`.
-
-## Maven / зависимости
-
-`backend/pom.xml` сохранён на основе приложенного пользователем файла: Spring Web, Data JPA, Validation, Security, OAuth2 Resource Server, Flyway, PostgreSQL, Springdoc/OpenAPI, Lombok, web-push, Bouncy Castle, тестовый Spring Boot, Security Test, Testcontainers, WireMock. Дополнительно включён Actuator для `/actuator/health`.
-
-Корневой `pom.xml` — только Maven-агрегатор. Внутри `backend/pom.xml` задано:
-
-```xml
-<artifactId>backend</artifactId>
-<name>backend</name>
-```
-
-> **Проверка:** XML-конфигурация, расположение файлов и ZIP-архив проверены статически. Настоящую сборку Docker/Maven в этой среде выполнить нельзя: Docker и Maven здесь не установлены. Первый запуск потребует доступ к Docker Hub и Maven Central.
+Открыть корень `GorkyCode2026` по `pom.xml`, использовать JDK 17 для запуска из IDE. В IDEA задать env-переменные `AUTH_JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` при прямом запуске `BackendApplication`, а для контейнерного запуска достаточно заполненного `.env`.

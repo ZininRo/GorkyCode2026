@@ -1,0 +1,385 @@
+openapi: 3.0.3
+info:
+  title: GorkyCode2026 Backend API
+  version: 1.0.0
+  description: |
+    Контракт MVP для React + Spring Boot (реализуется патчем auth/docker).
+    POST /api/v1/auth/* требует заголовок Origin из AUTH_ALLOWED_ORIGINS,
+    иначе возвращает 403 FORBIDDEN_ORIGIN.
+servers:
+  - url: http://localhost:8080
+    description: Local Docker / development
+tags:
+  - name: Auth
+    description: Регистрация, вход и управление сессией
+  - name: Users
+    description: Профиль текущего пользователя
+  - name: System
+    description: Проверка работоспособности
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Регистрация пользователя и начало сессии
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              displayName: Roman
+              email: roman@example.com
+              password: StrongPass123!
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '201':
+          description: Пользователь зарегистрирован
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh_token cookie (не возвращается в JSON)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Вход по email и паролю
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: roman@example.com
+              password: StrongPass123!
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '200':
+          description: Успешный вход
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh_token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refresh
+      summary: Обновление сессии по refresh-cookie
+      description: |
+        Тело запроса отсутствует. Токен берётся только из HttpOnly-cookie.
+        Refresh token ротируется; прежний токен становится недействительным.
+      security:
+        - refreshCookie: []
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '200':
+          description: Сессия обновлена
+          headers:
+            Set-Cookie:
+              description: Новая HttpOnly refresh_token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/InvalidRefreshToken'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Завершение сессии
+      description: Идемпотентный выход; ответ 204 даже при отсутствии cookie.
+      security: []
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '204':
+          description: Сессия завершена; refresh-cookie удалена
+          headers:
+            Set-Cookie:
+              description: refresh_token с Max-Age=0
+              schema:
+                type: string
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Профиль текущего пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/ping:
+    get:
+      tags: [System]
+      operationId: ping
+      summary: Проверка доступности backend (реализовано)
+      security: []
+      responses:
+        '200':
+          description: API работает
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+              example:
+                status: ok
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token в заголовке Authorization
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: HttpOnly cookie, устанавливается сервером; JS её не читает
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, email, password]
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 60
+          example: Roman
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: roman@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+          example: StrongPass123!
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          writeOnly: true
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: c71c6214-b925-4baf-8a7a-530b6fd23d45
+        displayName:
+          type: string
+          example: Roman
+        email:
+          type: string
+          format: email
+          example: roman@example.com
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-11-19T09:00:00Z'
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token, не сохранять в localStorage
+          example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLWlkIn0.signature
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Время жизни access token в секундах
+          example: 900
+        user:
+          $ref: '#/components/schemas/User'
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: email
+        message:
+          type: string
+          example: Некорректный email
+    ErrorDetails:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - INVALID_CREDENTIALS
+            - INVALID_REFRESH_TOKEN
+            - UNAUTHORIZED
+            - EMAIL_ALREADY_EXISTS
+            - TOO_MANY_REQUESTS
+            - FORBIDDEN_ORIGIN
+            - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        requestId:
+          type: string
+          format: uuid
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+    PingResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+  responses:
+    ForbiddenOrigin:
+      description: Обязательный Origin отсутствует или не разрешён
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: FORBIDDEN_ORIGIN
+              message: Недопустимый Origin
+    BadRequest:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Некорректные данные запроса
+              details:
+                - field: email
+                  message: Некорректный email
+    InvalidCredentials:
+      description: Неверный email или пароль
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: INVALID_CREDENTIALS
+              message: Неверный email или пароль
+    InvalidRefreshToken:
+      description: Refresh token отсутствует, просрочен или отозван
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: INVALID_REFRESH_TOKEN
+              message: Сессия истекла. Войдите снова.
+    Unauthorized:
+      description: Access token отсутствует или недействителен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Требуется авторизация
+    Conflict:
+      description: Пользователь с таким email уже существует
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: EMAIL_ALREADY_EXISTS
+              message: Этот email уже зарегистрирован
+    TooManyRequests:
+      description: Превышен лимит запросов
+      headers:
+        Retry-After:
+          description: Через сколько секунд можно повторить запрос
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: TOO_MANY_REQUESTS
+              message: Слишком много попыток. Попробуйте позже.
