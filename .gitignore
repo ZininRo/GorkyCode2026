@@ -16,7 +16,9 @@ Thumbs.db
 
 # Secrets
 .env
+.env.example
 !.env.example
 frontend/.env.local
 
 node_modules
+**/dist/
