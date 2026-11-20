@@ -19,7 +19,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,10 +51,17 @@ class AuthApiIT {
     @Autowired ObjectMapper mapper;
 
     @Test
-    void registerLoginRefreshRotateAndLogout() throws Exception {
+    void registerLoginRefreshRotateAndLogoutWithCity() throws Exception {
+        MvcResult cities = mvc.perform(get("/api/v1/cities").param("query", "Москва").param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("Москва"))
+                .andReturn();
+        long cityId = mapper.readTree(cities.getResponse().getContentAsString())
+                .get("items").get(0).get("id").asLong();
+
         String email = "test-" + UUID.randomUUID() + "@example.com";
         String registration = "{\"displayName\":\"Roman\",\"email\":\"" + email +
-                "\",\"password\":\"StrongPass123!\"}";
+                "\",\"password\":\"StrongPass123!\",\"cityId\":" + cityId + "}";
 
         MvcResult registered = mvc.perform(post("/api/v1/auth/register")
                         .header("Origin", ORIGIN).contentType(MediaType.APPLICATION_JSON)
@@ -63,6 +69,8 @@ class AuthApiIT {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.expiresIn").value(900))
                 .andExpect(jsonPath("$.user.email").value(email))
+                .andExpect(jsonPath("$.user.city.id").value(cityId))
+                .andExpect(jsonPath("$.user.city.name").value("Москва"))
                 .andReturn();
         JsonNode registeredJson = mapper.readTree(registered.getResponse().getContentAsString());
         String access = registeredJson.get("accessToken").asText();
@@ -74,13 +82,20 @@ class AuthApiIT {
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
         mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user").doesNotExist())
-                .andExpect(jsonPath("$.email").value(email));
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.city.name").value("Москва"));
 
         mvc.perform(post("/api/v1/auth/register").header("Origin", ORIGIN)
                         .contentType(MediaType.APPLICATION_JSON).content(registration))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"));
+
+        mvc.perform(post("/api/v1/auth/register").header("Origin", ORIGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Another\",\"email\":\"another-" + UUID.randomUUID() +
+                                "@example.com\",\"password\":\"StrongPass123!\",\"cityId\":999999999}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("CITY_NOT_FOUND"));
 
         mvc.perform(post("/api/v1/auth/login").header("Origin", ORIGIN)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,7 +107,7 @@ class AuthApiIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"StrongPass123!\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.email").value(email));
+                .andExpect(jsonPath("$.user.city.id").value(cityId));
 
         mvc.perform(post("/api/v1/auth/refresh").cookie(firstCookie))
                 .andExpect(status().isForbidden())
@@ -102,6 +117,7 @@ class AuthApiIT {
                         .header("Origin", ORIGIN).cookie(firstCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.user.city.id").value(cityId))
                 .andReturn();
         Cookie secondCookie = refreshCookie(refreshed);
         assertNotNull(secondCookie);
@@ -114,6 +130,16 @@ class AuthApiIT {
                 .andExpect(status().isNoContent());
         mvc.perform(post("/api/v1/auth/refresh").header("Origin", ORIGIN).cookie(secondCookie))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void registrationRequiresCityId() throws Exception {
+        mvc.perform(post("/api/v1/auth/register")
+                        .header("Origin", ORIGIN).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Roman\",\"email\":\"roman-" + UUID.randomUUID() +
+                                "@example.com\",\"password\":\"StrongPass123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     private Cookie refreshCookie(MvcResult result) {

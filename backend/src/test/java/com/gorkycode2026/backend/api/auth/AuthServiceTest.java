@@ -2,12 +2,12 @@ package com.gorkycode2026.backend.api.auth;
 
 import com.gorkycode2026.backend.auth.dto.LoginRequest;
 import com.gorkycode2026.backend.auth.dto.RegisterRequest;
-import com.gorkycode2026.backend.auth.model.UserAccount;
 import com.gorkycode2026.backend.auth.repository.RefreshTokenRepository;
 import com.gorkycode2026.backend.auth.repository.UserAccountRepository;
 import com.gorkycode2026.backend.auth.service.AuthService;
 import com.gorkycode2026.backend.auth.service.JwtService;
 import com.gorkycode2026.backend.auth.web.ApiException;
+import com.gorkycode2026.backend.city.service.CityService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,15 +30,16 @@ class AuthServiceTest {
         RefreshTokenRepository tokens = mock(RefreshTokenRepository.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtService jwt = mock(JwtService.class);
+        CityService cityService = mock(CityService.class);
         when(encoder.encode(anyString())).thenReturn("dummy-hash");
-        service = new AuthService(users, tokens, encoder, jwt, 7);
+        service = new AuthService(users, tokens, encoder, jwt, cityService, 7);
     }
 
     @Test
     void duplicateEmailIsCaseInsensitive() {
         when(users.existsByEmail("roman@example.com")).thenReturn(true);
         ApiException ex = assertThrows(ApiException.class, () ->
-                service.register(new RegisterRequest("Roman", " Roman@Example.com ", "StrongPass123!")));
+                service.register(new RegisterRequest("Roman", " Roman@Example.com ", "StrongPass123!", 1L)));
         assertEquals(HttpStatus.CONFLICT, ex.status());
         assertEquals("EMAIL_ALREADY_EXISTS", ex.code());
     }

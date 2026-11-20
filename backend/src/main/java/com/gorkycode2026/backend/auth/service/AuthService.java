@@ -9,6 +9,8 @@ import com.gorkycode2026.backend.auth.model.UserAccount;
 import com.gorkycode2026.backend.auth.repository.RefreshTokenRepository;
 import com.gorkycode2026.backend.auth.repository.UserAccountRepository;
 import com.gorkycode2026.backend.auth.web.ApiException;
+import com.gorkycode2026.backend.city.model.City;
+import com.gorkycode2026.backend.city.service.CityService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -33,18 +35,20 @@ public class AuthService {
     private final RefreshTokenRepository tokens;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final CityService cityService;
     private final long refreshTtlDays;
     private final String dummyPasswordHash;
 
     public record AuthSession(AuthResponse response, String refreshToken) { }
 
     public AuthService(UserAccountRepository users, RefreshTokenRepository tokens,
-                       PasswordEncoder passwordEncoder, JwtService jwtService,
+                       PasswordEncoder passwordEncoder, JwtService jwtService, CityService cityService,
                        @Value("${app.auth.refresh-ttl-days}") long refreshTtlDays) {
         this.users = users;
         this.tokens = tokens;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.cityService = cityService;
         this.refreshTtlDays = refreshTtlDays;
         // Equalize the expensive password check for unknown email vs wrong password.
         this.dummyPasswordHash = passwordEncoder.encode("not-a-real-password");
@@ -56,7 +60,8 @@ public class AuthService {
         if (users.existsByEmail(email)) {
             throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Этот email уже зарегистрирован");
         }
-        UserAccount user = new UserAccount(email, request.displayName(), passwordEncoder.encode(request.password()));
+        City city = cityService.getRequired(request.cityId());
+        UserAccount user = new UserAccount(email, request.displayName(), passwordEncoder.encode(request.password()), city);
         try {
             users.saveAndFlush(user);
         } catch (DataIntegrityViolationException ex) {
