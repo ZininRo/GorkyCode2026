@@ -1,0 +1,3642 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/
+  http/
+    requests.http
+  src/
+    main/
+      java/
+        com/
+          gorkycode2026/
+            backend/
+              api/
+                PingController.java
+              auth/
+                api/
+                  AuthController.java
+                  UserController.java
+                dto/
+                  AuthResponse.java
+                  LoginRequest.java
+                  RegisterRequest.java
+                  UserResponse.java
+                model/
+                  RefreshToken.java
+                  UserAccount.java
+                repository/
+                  RefreshTokenRepository.java
+                  UserAccountRepository.java
+                service/
+                  AuthService.java
+                  JwtService.java
+                web/
+                  ApiError.java
+                  ApiErrorWriter.java
+                  ApiException.java
+                  ApiExceptionHandler.java
+                  AuthRateLimitFilter.java
+                  OriginVerificationFilter.java
+                  RefreshCookieService.java
+              config/
+                JwtConfig.java
+                OpenApiConfig.java
+                SecurityConfig.java
+              BackendApplication.java
+      resources/
+        db/
+          migration/
+            .gitkeep
+            V1__create_auth_tables.sql
+        application.yml
+    test/
+      java/
+        com/
+          gorkycode2026/
+            backend/
+              api/
+                api/
+                  PingControllerTest.java
+                auth/
+                  AuthApiIT.java
+                  AuthServiceTest.java
+                  OriginVerificationFilterTest.java
+                  RefreshCookieServiceTest.java
+  .dockerignore
+  Dockerfile
+  pom.xml
+docs/
+  API_CONTRACT.md
+  openapi.yaml
+frontend/
+  src/
+    api/
+      auth.api.ts
+      client.ts
+    components/
+      routing/
+        GuestRoute.tsx
+        ProtectedRoute.tsx
+      FormError.tsx
+      ProtectedRoute.tsx
+    context/
+      AuthContext.tsx
+    pages/
+      HomePage/
+        HomePage.module.css
+        HomePage.tsx
+      LoginPage/
+        LoginPage.module.css
+        LoginPage.tsx
+      NotFoundPage/
+        NotFoundPage.tsx
+      ProfilePage/
+        ProfilePage.tsx
+      RegisterPage/
+        RegisterPage.module.css
+        RegisterPage.tsx
+    router/
+      AppRouter.tsx
+    styles/
+      fonts.css
+      global.css
+      index.css
+      reset.css
+      variables.css
+    types/
+      auth.types.ts
+    App.tsx
+    main.tsx
+  .dockerignore
+  Dockerfile
+  index.html
+  nginx.conf
+  package.json
+  README.md
+  tsconfig.app.json
+  tsconfig.json
+  tsconfig.node.json
+  vite.config.ts
+.editorconfig
+.env.example
+.gitignore
+compose.yaml
+pom.xml
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/http/requests.http">
+### Backend API
+GET http://localhost:8080/api/v1/ping
+Accept: application/json
+
+### Application health
+GET http://localhost:8080/actuator/health
+Accept: application/json
+
+### Swagger schema
+GET http://localhost:8080/v3/api-docs
+Accept: application/json
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/api/PingController.java">
+package com.gorkycode2026.backend.api;
+
+import java.util.Map;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class PingController {
+
+    @GetMapping("/ping")
+    public Map<String, String> ping() {
+        return Map.of("status", "ok");
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/api/AuthController.java">
+package com.gorkycode2026.backend.auth.api;
+
+import com.gorkycode2026.backend.auth.dto.AuthResponse;
+import com.gorkycode2026.backend.auth.dto.LoginRequest;
+import com.gorkycode2026.backend.auth.dto.RegisterRequest;
+import com.gorkycode2026.backend.auth.service.AuthService;
+import com.gorkycode2026.backend.auth.web.RefreshCookieService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+    private final AuthService authService;
+    private final RefreshCookieService cookies;
+
+    public AuthController(AuthService authService, RefreshCookieService cookies) {
+        this.authService = authService;
+        this.cookies = cookies;
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest body) {
+        return withCookie(authService.register(body), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest body) {
+        return withCookie(authService.login(body), HttpStatus.OK);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@CookieValue(value = "refresh_token", required = false) String token) {
+        return withCookie(authService.refresh(token), HttpStatus.OK);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@CookieValue(value = "refresh_token", required = false) String token) {
+        authService.logout(token);
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookies.clearCookie()).build();
+    }
+
+    private ResponseEntity<AuthResponse> withCookie(AuthService.AuthSession session, HttpStatus status) {
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.SET_COOKIE, cookies.setCookie(session.refreshToken()))
+                .body(session.response());
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/api/UserController.java">
+package com.gorkycode2026.backend.auth.api;
+
+import com.gorkycode2026.backend.auth.dto.UserResponse;
+import com.gorkycode2026.backend.auth.service.AuthService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserController {
+    private final AuthService authService;
+
+    public UserController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/me")
+    public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
+        return authService.currentUser(jwt.getSubject());
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/dto/AuthResponse.java">
+package com.gorkycode2026.backend.auth.dto;
+
+public record AuthResponse(String accessToken, String tokenType, long expiresIn, UserResponse user) {
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/dto/LoginRequest.java">
+package com.gorkycode2026.backend.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record LoginRequest(
+        @NotBlank @Email @Size(max = 254) String email,
+        @NotBlank String password
+) {
+    public LoginRequest {
+        if (email != null) email = email.trim();
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/dto/RegisterRequest.java">
+package com.gorkycode2026.backend.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record RegisterRequest(
+        @NotBlank @Size(min = 2, max = 60) String displayName,
+        @NotBlank @Email @Size(max = 254) String email,
+        @NotBlank @Size(min = 8, max = 128) String password
+) {
+    public RegisterRequest {
+        if (displayName != null) displayName = displayName.trim();
+        if (email != null) email = email.trim();
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/dto/UserResponse.java">
+package com.gorkycode2026.backend.auth.dto;
+
+import com.gorkycode2026.backend.auth.model.UserAccount;
+import java.time.Instant;
+import java.util.UUID;
+
+public record UserResponse(UUID id, String displayName, String email, Instant createdAt) {
+    public static UserResponse from(UserAccount user) {
+        return new UserResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getCreatedAt());
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/model/RefreshToken.java">
+package com.gorkycode2026.backend.auth.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "refresh_tokens")
+public class RefreshToken {
+    @Id
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserAccount user;
+
+    @Column(name = "token_hash", nullable = false, length = 64, unique = true)
+    private String tokenHash;
+
+    @Column(name = "expires_at", nullable = false)
+    private Instant expiresAt;
+
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    protected RefreshToken() { }
+
+    public RefreshToken(UserAccount user, String tokenHash, Instant now, Instant expiresAt) {
+        this.id = UUID.randomUUID();
+        this.user = user;
+        this.tokenHash = tokenHash;
+        this.createdAt = now;
+        this.expiresAt = expiresAt;
+    }
+
+    public UserAccount getUser() { return user; }
+    public Instant getExpiresAt() { return expiresAt; }
+    public Instant getRevokedAt() { return revokedAt; }
+    public void revoke(Instant at) { this.revokedAt = at; }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/model/UserAccount.java">
+package com.gorkycode2026.backend.auth.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "users")
+public class UserAccount {
+    @Id
+    private UUID id;
+
+    @Column(name = "email", nullable = false, length = 254)
+    private String email;
+
+    @Column(name = "display_name", nullable = false, length = 60)
+    private String displayName;
+
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    protected UserAccount() { }
+
+    public UserAccount(String email, String displayName, String passwordHash) {
+        this.id = UUID.randomUUID();
+        this.email = email;
+        this.displayName = displayName;
+        this.passwordHash = passwordHash;
+    }
+
+    @PrePersist
+    void onCreate() {
+        Instant now = Instant.now();
+        if (createdAt == null) createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    public UUID getId() { return id; }
+    public String getEmail() { return email; }
+    public String getDisplayName() { return displayName; }
+    public String getPasswordHash() { return passwordHash; }
+    public Instant getCreatedAt() { return createdAt; }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/repository/RefreshTokenRepository.java">
+package com.gorkycode2026.backend.auth.repository;
+
+import com.gorkycode2026.backend.auth.model.RefreshToken;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
+    // Row lock ensures two simultaneous refresh requests cannot both rotate the same token.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from RefreshToken t join fetch t.user where t.tokenHash = :hash")
+    Optional<RefreshToken> findLockedByHash(@Param("hash") String hash);
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/repository/UserAccountRepository.java">
+package com.gorkycode2026.backend.auth.repository;
+
+import com.gorkycode2026.backend.auth.model.UserAccount;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> {
+    Optional<UserAccount> findByEmail(String email);
+    boolean existsByEmail(String email);
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/service/AuthService.java">
+package com.gorkycode2026.backend.auth.service;
+
+import com.gorkycode2026.backend.auth.dto.AuthResponse;
+import com.gorkycode2026.backend.auth.dto.LoginRequest;
+import com.gorkycode2026.backend.auth.dto.RegisterRequest;
+import com.gorkycode2026.backend.auth.dto.UserResponse;
+import com.gorkycode2026.backend.auth.model.RefreshToken;
+import com.gorkycode2026.backend.auth.model.UserAccount;
+import com.gorkycode2026.backend.auth.repository.RefreshTokenRepository;
+import com.gorkycode2026.backend.auth.repository.UserAccountRepository;
+import com.gorkycode2026.backend.auth.web.ApiException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.Locale;
+import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AuthService {
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private final UserAccountRepository users;
+    private final RefreshTokenRepository tokens;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final long refreshTtlDays;
+    private final String dummyPasswordHash;
+
+    public record AuthSession(AuthResponse response, String refreshToken) { }
+
+    public AuthService(UserAccountRepository users, RefreshTokenRepository tokens,
+                       PasswordEncoder passwordEncoder, JwtService jwtService,
+                       @Value("${app.auth.refresh-ttl-days}") long refreshTtlDays) {
+        this.users = users;
+        this.tokens = tokens;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.refreshTtlDays = refreshTtlDays;
+        // Equalize the expensive password check for unknown email vs wrong password.
+        this.dummyPasswordHash = passwordEncoder.encode("not-a-real-password");
+    }
+
+    @Transactional
+    public AuthSession register(RegisterRequest request) {
+        String email = normalizeEmail(request.email());
+        if (users.existsByEmail(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Этот email уже зарегистрирован");
+        }
+        UserAccount user = new UserAccount(email, request.displayName(), passwordEncoder.encode(request.password()));
+        try {
+            users.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            // Covers concurrent registrations racing for the same unique email.
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Этот email уже зарегистрирован");
+        }
+        return issueSession(user, Instant.now());
+    }
+
+    @Transactional
+    public AuthSession login(LoginRequest request) {
+        UserAccount user = users.findByEmail(normalizeEmail(request.email())).orElse(null);
+        String hash = user == null ? dummyPasswordHash : user.getPasswordHash();
+        if (!passwordEncoder.matches(request.password(), hash) || user == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Неверный email или пароль");
+        }
+        return issueSession(user, Instant.now());
+    }
+
+    @Transactional
+    public AuthSession refresh(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw invalidRefresh();
+        }
+        RefreshToken current = tokens.findLockedByHash(sha256(rawToken)).orElseThrow(AuthService::invalidRefresh);
+        Instant now = Instant.now();
+        if (current.getRevokedAt() != null || !current.getExpiresAt().isAfter(now)) {
+            throw invalidRefresh();
+        }
+        current.revoke(now);
+        return issueSession(current.getUser(), now);
+    }
+
+    @Transactional
+    public void logout(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) return;
+        tokens.findLockedByHash(sha256(rawToken)).ifPresent(current -> {
+            if (current.getRevokedAt() == null) current.revoke(Instant.now());
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse currentUser(String subject) {
+        UUID id;
+        try {
+            id = UUID.fromString(subject);
+        } catch (IllegalArgumentException ex) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Требуется авторизация");
+        }
+        UserAccount user = users.findById(id).orElseThrow(() ->
+                new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Требуется авторизация"));
+        return UserResponse.from(user);
+    }
+
+    private AuthSession issueSession(UserAccount user, Instant now) {
+        byte[] random = new byte[32];
+        RANDOM.nextBytes(random);
+        String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+        tokens.save(new RefreshToken(user, sha256(raw), now, now.plus(refreshTtlDays, ChronoUnit.DAYS)));
+        AuthResponse response = new AuthResponse(jwtService.issueAccessToken(user, now),
+                "Bearer", jwtService.accessTtlSeconds(), UserResponse.from(user));
+        return new AuthSession(response, raw);
+    }
+
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
+    }
+
+    private static ApiException invalidRefresh() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Сессия истекла. Войдите снова.");
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/service/JwtService.java">
+package com.gorkycode2026.backend.auth.service;
+
+import com.gorkycode2026.backend.auth.model.UserAccount;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.stereotype.Service;
+
+@Service
+public class JwtService {
+    private final JwtEncoder encoder;
+    private final String issuer;
+    private final String audience;
+    private final long accessTtlSeconds;
+
+    public JwtService(JwtEncoder encoder,
+                      @Value("${app.auth.jwt-issuer}") String issuer,
+                      @Value("${app.auth.jwt-audience}") String audience,
+                      @Value("${app.auth.access-ttl-seconds}") long accessTtlSeconds) {
+        this.encoder = encoder;
+        this.issuer = issuer;
+        this.audience = audience;
+        this.accessTtlSeconds = accessTtlSeconds;
+    }
+
+    public String issueAccessToken(UserAccount user, Instant now) {
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .audience(List.of(audience))
+                .subject(user.getId().toString())
+                .issuedAt(now)
+                .notBefore(now)
+                .expiresAt(now.plusSeconds(accessTtlSeconds))
+                .build();
+        JwsHeader headers = JwsHeader.with(MacAlgorithm.HS256).build();
+        return encoder.encode(JwtEncoderParameters.from(headers, claims)).getTokenValue();
+    }
+
+    public long accessTtlSeconds() { return accessTtlSeconds; }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/ApiError.java">
+package com.gorkycode2026.backend.auth.web;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
+
+public record ApiError(Details error) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Details(String code, String message, List<FieldIssue> details) { }
+    public record FieldIssue(String field, String message) { }
+
+    public static ApiError of(String code, String message) {
+        return new ApiError(new Details(code, message, null));
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/ApiErrorWriter.java">
+package com.gorkycode2026.backend.auth.web;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import org.springframework.http.MediaType;
+
+public final class ApiErrorWriter {
+    private ApiErrorWriter() { }
+
+    public static void write(HttpServletResponse response, ObjectMapper mapper,
+                             int httpStatus, String code, String message) throws IOException {
+        response.setStatus(httpStatus);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        mapper.writeValue(response.getWriter(), ApiError.of(code, message));
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/ApiException.java">
+package com.gorkycode2026.backend.auth.web;
+
+import org.springframework.http.HttpStatus;
+
+public class ApiException extends RuntimeException {
+    private final HttpStatus status;
+    private final String code;
+
+    public ApiException(HttpStatus status, String code, String message) {
+        super(message);
+        this.status = status;
+        this.code = code;
+    }
+
+    public HttpStatus status() { return status; }
+    public String code() { return code; }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/ApiExceptionHandler.java">
+package com.gorkycode2026.backend.auth.web;
+
+import java.util.Comparator;
+import java.util.List;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class ApiExceptionHandler {
+    private final RefreshCookieService cookies;
+
+    public ApiExceptionHandler(RefreshCookieService cookies) {
+        this.cookies = cookies;
+    }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiError> handleApi(ApiException exception) {
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(exception.status());
+        if ("INVALID_REFRESH_TOKEN".equals(exception.code())) {
+            builder.header(HttpHeaders.SET_COOKIE, cookies.clearCookie());
+        }
+        return builder.body(ApiError.of(exception.code(), exception.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {
+        List<ApiError.FieldIssue> fields = exception.getBindingResult().getFieldErrors().stream()
+                .map(field -> new ApiError.FieldIssue(field.getField(), field.getDefaultMessage()))
+                .distinct()
+                .sorted(Comparator.comparing(ApiError.FieldIssue::field))
+                .toList();
+        return ResponseEntity.badRequest().body(new ApiError(
+                new ApiError.Details("VALIDATION_ERROR", "Некорректные данные запроса", fields)));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleMalformedJson(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(ApiError.of("VALIDATION_ERROR", "Некорректный JSON-запрос"));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleUnexpected(Exception exception) {
+        // Never include exception text or credentials in public error responses.
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiError.of("INTERNAL_ERROR", "Внутренняя ошибка сервера"));
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/AuthRateLimitFilter.java">
+package com.gorkycode2026.backend.auth.web;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/** Basic per-IP, per-endpoint fixed-window limit for a single Docker instance (MVP). */
+public class AuthRateLimitFilter extends OncePerRequestFilter {
+    private static final long WINDOW_MILLIS = Duration.ofMinutes(1).toMillis();
+    private static final int LIMIT = 20;
+    private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+    private final ObjectMapper mapper;
+
+    public AuthRateLimitFilter(ObjectMapper mapper) { this.mapper = mapper; }
+
+    private static class Window {
+        long beginsAt;
+        int count;
+        Window(long now) { beginsAt = now; }
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) return true;
+        String route = request.getServletPath();
+        return !route.equals("/api/v1/auth/register")
+                && !route.equals("/api/v1/auth/login")
+                && !route.equals("/api/v1/auth/refresh");
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
+        long now = System.currentTimeMillis();
+        String key = request.getRemoteAddr() + ":" + request.getServletPath();
+        Window window = windows.computeIfAbsent(key, unused -> new Window(now));
+        boolean limited;
+        long retryAfter;
+        synchronized (window) {
+            if (now - window.beginsAt >= WINDOW_MILLIS) {
+                window.beginsAt = now;
+                window.count = 0;
+            }
+            limited = ++window.count > LIMIT;
+            retryAfter = Math.max(1, (window.beginsAt + WINDOW_MILLIS - now + 999) / 1000);
+        }
+        // Periodically release old keys; never trust client-controlled X-Forwarded-For.
+        if (windows.size() > 10000) {
+            windows.entrySet().removeIf(e -> now - e.getValue().beginsAt > WINDOW_MILLIS * 2);
+        }
+        if (limited) {
+            response.setHeader("Retry-After", Long.toString(retryAfter));
+            ApiErrorWriter.write(response, mapper, 429, "TOO_MANY_REQUESTS", "Слишком много попыток. Попробуйте позже.");
+            return;
+        }
+        chain.doFilter(request, response);
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/OriginVerificationFilter.java">
+package com.gorkycode2026.backend.auth.web;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/**
+ * Auth cookies are sent by browsers. Require a known Origin on all POST /auth routes
+ * so that cookies cannot be used by another site to refresh/logout a session.
+ */
+public class OriginVerificationFilter extends OncePerRequestFilter {
+    private final Set<String> origins;
+    private final ObjectMapper mapper;
+
+    public OriginVerificationFilter(String csv, ObjectMapper mapper) {
+        this.origins = Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
+        this.mapper = mapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return !"POST".equalsIgnoreCase(request.getMethod())
+                || !request.getServletPath().startsWith("/api/v1/auth/");
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
+        String origin = request.getHeader("Origin");
+        if (origin == null || !origins.contains(origin)) {
+            ApiErrorWriter.write(response, mapper, 403, "FORBIDDEN_ORIGIN", "Недопустимый Origin");
+            return;
+        }
+        chain.doFilter(request, response);
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/auth/web/RefreshCookieService.java">
+package com.gorkycode2026.backend.auth.web;
+
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.stereotype.Component;
+
+@Component
+public class RefreshCookieService {
+    private static final String NAME = "refresh_token";
+    private static final String PATH = "/api/v1/auth";
+    private final boolean secure;
+    private final Duration ttl;
+
+    public RefreshCookieService(@Value("${app.auth.cookie-secure}") boolean secure,
+                                @Value("${app.auth.refresh-ttl-days}") long days) {
+        this.secure = secure;
+        this.ttl = Duration.ofDays(days);
+    }
+
+    public String setCookie(String rawToken) {
+        return cookie(rawToken, ttl);
+    }
+
+    public String clearCookie() {
+        return cookie("", Duration.ZERO);
+    }
+
+    private String cookie(String value, Duration maxAge) {
+        return ResponseCookie.from(NAME, value)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path(PATH)
+                .maxAge(maxAge)
+                .build()
+                .toString();
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/config/JwtConfig.java">
+package com.gorkycode2026.backend.config;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import java.util.Base64;
+import java.util.List;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+
+@Configuration
+public class JwtConfig {
+    @Bean
+    SecretKey jwtSecretKey(@Value("${app.auth.jwt-secret}") String encodedSecret) {
+        byte[] keyBytes;
+        try {
+            keyBytes = Base64.getDecoder().decode(encodedSecret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("AUTH_JWT_SECRET must be Base64 encoded", ex);
+        }
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("AUTH_JWT_SECRET must contain at least 32 random bytes");
+        }
+        return new SecretKeySpec(keyBytes, "HmacSHA256");
+    }
+
+    @Bean
+    JwtEncoder jwtEncoder(SecretKey key) {
+        OctetSequenceKey jwk = new OctetSequenceKey.Builder(key)
+                .algorithm(JWSAlgorithm.HS256)
+                .build();
+        return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(jwk)));
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(SecretKey key,
+                          @Value("${app.auth.jwt-issuer}") String issuer,
+                          @Value("${app.auth.jwt-audience}") String audience) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuer),
+                new JwtClaimValidator<List<String>>("aud", values -> values != null && values.contains(audience))
+        ));
+        return decoder;
+    }
+}
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/config/OpenApiConfig.java">
+package com.gorkycode2026.backend.config;
+
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@OpenAPIDefinition(info = @Info(title = "GorkyCode2026 Backend API", version = "1.0.0",
+        description = "Registration, JWT login, session refresh/logout and current user profile"))
+@SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
+public class OpenApiConfig { }
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/BackendApplication.java">
+package com.gorkycode2026.backend;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BackendApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(BackendApplication.class, args);
+    }
+}
+</file>
+
+<file path="backend/src/main/resources/db/migration/.gitkeep">
+# Add Flyway migrations here, e.g. V1__init.sql
+</file>
+
+<file path="backend/src/main/resources/db/migration/V1__create_auth_tables.sql">
+-- Initial auth schema. Never edit a migration that has already been applied.
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    email VARCHAR(254) NOT NULL,
+    display_name VARCHAR(60) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+CREATE UNIQUE INDEX ux_users_email_lower ON users (lower(email));
+
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX ix_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX ix_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+</file>
+
+<file path="backend/src/test/java/com/gorkycode2026/backend/api/api/PingControllerTest.java">
+package com.gorkycode2026.backend.api.api;
+
+import com.gorkycode2026.backend.api.PingController;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+class PingControllerTest {
+    private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new PingController()).build();
+
+    @Test
+    void pingShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/ping"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"));
+    }
+}
+</file>
+
+<file path="backend/src/test/java/com/gorkycode2026/backend/api/auth/AuthApiIT.java">
+package com.gorkycode2026.backend.api.auth;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Testcontainers
+class AuthApiIT {
+    private static final String ORIGIN = "http://localhost:5173";
+
+    @Container
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17")
+            .withDatabaseName("gorkycode2026_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void properties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("app.auth.jwt-secret", () -> Base64.getEncoder().encodeToString(
+                "non-production-integration-test-key!".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Autowired MockMvc mvc;
+    @Autowired ObjectMapper mapper;
+
+    @Test
+    void registerLoginRefreshRotateAndLogout() throws Exception {
+        String email = "test-" + UUID.randomUUID() + "@example.com";
+        String registration = "{\"displayName\":\"Roman\",\"email\":\"" + email +
+                "\",\"password\":\"StrongPass123!\"}";
+
+        MvcResult registered = mvc.perform(post("/api/v1/auth/register")
+                        .header("Origin", ORIGIN).contentType(MediaType.APPLICATION_JSON)
+                        .content(registration))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.expiresIn").value(900))
+                .andExpect(jsonPath("$.user.email").value(email))
+                .andReturn();
+        JsonNode registeredJson = mapper.readTree(registered.getResponse().getContentAsString());
+        String access = registeredJson.get("accessToken").asText();
+        Cookie firstCookie = refreshCookie(registered);
+        assertNotNull(firstCookie);
+
+        mvc.perform(get("/api/v1/users/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+        mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user").doesNotExist())
+                .andExpect(jsonPath("$.email").value(email));
+
+        mvc.perform(post("/api/v1/auth/register").header("Origin", ORIGIN)
+                        .contentType(MediaType.APPLICATION_JSON).content(registration))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"));
+
+        mvc.perform(post("/api/v1/auth/login").header("Origin", ORIGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+
+        mvc.perform(post("/api/v1/auth/login").header("Origin", ORIGIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"StrongPass123!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.email").value(email));
+
+        mvc.perform(post("/api/v1/auth/refresh").cookie(firstCookie))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN_ORIGIN"));
+
+        MvcResult refreshed = mvc.perform(post("/api/v1/auth/refresh")
+                        .header("Origin", ORIGIN).cookie(firstCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andReturn();
+        Cookie secondCookie = refreshCookie(refreshed);
+        assertNotNull(secondCookie);
+        assertFalse(firstCookie.getValue().equals(secondCookie.getValue()));
+
+        mvc.perform(post("/api/v1/auth/refresh").header("Origin", ORIGIN).cookie(firstCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
+        mvc.perform(post("/api/v1/auth/logout").header("Origin", ORIGIN).cookie(secondCookie))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/api/v1/auth/refresh").header("Origin", ORIGIN).cookie(secondCookie))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private Cookie refreshCookie(MvcResult result) {
+        String value = result.getResponse().getHeader("Set-Cookie");
+        assertNotNull(value);
+        String raw = value.split(";", 2)[0].split("=", 2)[1];
+        return new Cookie("refresh_token", raw);
+    }
+}
+</file>
+
+<file path="backend/src/test/java/com/gorkycode2026/backend/api/auth/AuthServiceTest.java">
+package com.gorkycode2026.backend.api.auth;
+
+import com.gorkycode2026.backend.auth.dto.LoginRequest;
+import com.gorkycode2026.backend.auth.dto.RegisterRequest;
+import com.gorkycode2026.backend.auth.model.UserAccount;
+import com.gorkycode2026.backend.auth.repository.RefreshTokenRepository;
+import com.gorkycode2026.backend.auth.repository.UserAccountRepository;
+import com.gorkycode2026.backend.auth.service.AuthService;
+import com.gorkycode2026.backend.auth.service.JwtService;
+import com.gorkycode2026.backend.auth.web.ApiException;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class AuthServiceTest {
+    private UserAccountRepository users;
+    private AuthService service;
+
+    @BeforeEach
+    void setUp() {
+        users = mock(UserAccountRepository.class);
+        RefreshTokenRepository tokens = mock(RefreshTokenRepository.class);
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        JwtService jwt = mock(JwtService.class);
+        when(encoder.encode(anyString())).thenReturn("dummy-hash");
+        service = new AuthService(users, tokens, encoder, jwt, 7);
+    }
+
+    @Test
+    void duplicateEmailIsCaseInsensitive() {
+        when(users.existsByEmail("roman@example.com")).thenReturn(true);
+        ApiException ex = assertThrows(ApiException.class, () ->
+                service.register(new RegisterRequest("Roman", " Roman@Example.com ", "StrongPass123!")));
+        assertEquals(HttpStatus.CONFLICT, ex.status());
+        assertEquals("EMAIL_ALREADY_EXISTS", ex.code());
+    }
+
+    @Test
+    void loginWithUnknownEmailDoesNotRevealAccountExistence() {
+        when(users.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+        ApiException ex = assertThrows(ApiException.class, () ->
+                service.login(new LoginRequest("Nobody@Example.com", "wrong-password")));
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.status());
+        assertEquals("INVALID_CREDENTIALS", ex.code());
+    }
+
+    @Test
+    void invalidRefreshCookieReturnsUnauthorized() {
+        ApiException ex = assertThrows(ApiException.class, () -> service.refresh(null));
+        assertEquals("INVALID_REFRESH_TOKEN", ex.code());
+    }
+}
+</file>
+
+<file path="backend/src/test/java/com/gorkycode2026/backend/api/auth/OriginVerificationFilterTest.java">
+package com.gorkycode2026.backend.api.auth;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gorkycode2026.backend.auth.web.OriginVerificationFilter;
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class OriginVerificationFilterTest {
+    private final OriginVerificationFilter filter =
+            new OriginVerificationFilter("http://localhost:5173,http://localhost:8080", new ObjectMapper());
+
+    @Test
+    void crossSitePostIsRejected() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/refresh");
+        req.setServletPath("/api/v1/auth/refresh");
+        req.addHeader("Origin", "https://untrusted.example");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter.doFilter(req, res, new MockFilterChain());
+        assertEquals(403, res.getStatus());
+        assertTrue(res.getContentAsString().contains("FORBIDDEN_ORIGIN"));
+    }
+
+    @Test
+    void expectedReactOriginPasses() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/refresh");
+        req.setServletPath("/api/v1/auth/refresh");
+        req.addHeader("Origin", "http://localhost:5173");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        filter.doFilter(req, res, new MockFilterChain());
+        assertEquals(200, res.getStatus());
+    }
+}
+</file>
+
+<file path="backend/src/test/java/com/gorkycode2026/backend/api/auth/RefreshCookieServiceTest.java">
+package com.gorkycode2026.backend.api.auth;
+
+import com.gorkycode2026.backend.auth.web.RefreshCookieService;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class RefreshCookieServiceTest {
+    @Test
+    void refreshCookieIsHttpOnlyAndScopedToAuth() {
+        String cookie = new RefreshCookieService(false, 7).setCookie("test-token");
+        assertTrue(cookie.contains("HttpOnly"));
+        assertTrue(cookie.contains("SameSite=Lax"));
+        assertTrue(cookie.contains("Path=/api/v1/auth"));
+        assertTrue(cookie.contains("Max-Age=604800"));
+    }
+
+    @Test
+    void logoutClearsSameCookie() {
+        String cookie = new RefreshCookieService(true, 7).clearCookie();
+        assertTrue(cookie.contains("Max-Age=0"));
+        assertTrue(cookie.contains("Secure"));
+        assertTrue(cookie.contains("Path=/api/v1/auth"));
+    }
+}
+</file>
+
+<file path="backend/.dockerignore">
+target
+.idea
+*.iml
+.env
+.git
+.DS_Store
+README.md
+</file>
+
+<file path="docs/API_CONTRACT.md">
+# GorkyCode2026 — API-контракт Backend ↔ Frontend (React)
+
+**Версия:** 1.0.0 (MVP)  
+**Статус:** РЕАЛИЗОВАНО В ПАТЧЕ AUTH MVP — требуется проверка сборки и интеграционное тестирование на машине разработчика.  
+**Ответственные:** Backend (Spring Boot 3.5.6 / Java 17), Frontend (React + TypeScript).  
+**Источник истины для схем запросов/ответов:** [`openapi.yaml`](./openapi.yaml).
+
+> Эндпоинты авторизации и профиля входят в патч `GorkyCode2026_auth_docker_patch.zip`. До его применения в исходном backend реализован только `GET /api/v1/ping`.
+
+## 1. Цель и границы MVP
+
+Реализовать регистрацию по email/паролю, вход, обновление сессии, выход и получение своего профиля. React должен показывать страницы `/register`, `/login`, `/profile`, восстанавливать сессию после перезагрузки страницы и закрывать приватные маршруты для неавторизованных пользователей.
+
+**Не входят в MVP:** подтверждение email, сброс пароля, изменение профиля, роли ADMIN, OAuth через Google/GitHub, двухфакторная авторизация, загрузка аватаров. Их добавляем отдельными версиями контракта.
+
+## 2. Общие правила
+
+| Параметр | Соглашение |
+|---|---|
+| Dev backend | `http://localhost:8080` |
+| Dev frontend | `http://localhost:5173` (Vite) |
+| Префикс REST API | `/api/v1` |
+| Формат тела | `application/json; charset=utf-8` |
+| Названия полей | `camelCase` |
+| Даты | UTC ISO 8601, например `2026-11-19T09:00:00Z` |
+| ID пользователя | UUID-строка |
+| Авторизация приватных API | `Authorization: Bearer <accessToken>` |
+| Access token | JWT, срок жизни **15 минут** (`expiresIn: 900` секунд) |
+| Refresh token | Случайный непрозрачный токен, **7 дней**, только HttpOnly-cookie |
+| Сохранение токена в React | Access token только **в памяти** приложения; refresh token не доступен JS |
+| Ответы об ошибках | Единый JSON `error`, см. раздел 5 |
+
+Перечисленные ниже endpoint-ы реализованы в патче; актуальность подтвердить smoke-тестами после установки.
+
+## 3. Реестр API
+
+| Метод | Endpoint | Назначение | Авторизация | Успех |
+|---|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Создать пользователя и начать сессию | Нет | `201` |
+| `POST` | `/api/v1/auth/login` | Войти по email/паролю | Нет | `200` |
+| `POST` | `/api/v1/auth/refresh` | Обновить access token и refresh-cookie | Refresh-cookie | `200` |
+| `POST` | `/api/v1/auth/logout` | Завершить текущую сессию | Refresh-cookie (если есть) | `204` |
+| `GET` | `/api/v1/users/me` | Получить свой профиль | Bearer JWT | `200` |
+| `GET` | `/api/v1/ping` | Проверить API (уже существует) | Нет | `200` |
+
+### 3.1. Регистрация — `POST /api/v1/auth/register`
+
+**Request**:
+
+```json
+{
+  "displayName": "Roman",
+  "email": "roman@example.com",
+  "password": "StrongPass123!"
+}
+```
+
+**Правила валидации:** `displayName` — от 2 до 60 символов после trim; `email` — валидный адрес, не более 254 символов, trim + нормализация регистра для поиска и уникальности; `password` — от 8 до 128 символов (проверяется на сервере). Пароль не возвращается и не записывается в лог.
+
+**Response `201 Created`**: JSON `AuthResponse` (ниже) и заголовок `Set-Cookie: refresh_token=...` с атрибутами безопасности. Возможные ошибки: `400 VALIDATION_ERROR`, `409 EMAIL_ALREADY_EXISTS`, `429 TOO_MANY_REQUESTS`.
+
+### 3.2. Вход — `POST /api/v1/auth/login`
+
+**Request**:
+
+```json
+{
+  "email": "roman@example.com",
+  "password": "StrongPass123!"
+}
+```
+
+**Response `200 OK`**: тот же `AuthResponse` + новая refresh-cookie. Ошибки: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS`, `429 TOO_MANY_REQUESTS`. При неверном email и пароле сообщение одинаковое, без раскрытия существования аккаунта.
+
+### 3.3. Общий ответ регистрации/входа/обновления — `AuthResponse`
+
+```json
+{
+  "accessToken": "<JWT_ACCESS_TOKEN>",
+  "tokenType": "Bearer",
+  "expiresIn": 900,
+  "user": {
+    "id": "c71c6214-b925-4baf-8a7a-530b6fd23d45",
+    "displayName": "Roman",
+    "email": "roman@example.com",
+    "createdAt": "2026-11-19T09:00:00Z"
+  }
+}
+```
+
+**Важно:** `refreshToken` **никогда не возвращается в JSON**. Он выдаётся и обновляется только через cookie, доступную браузеру, но не JavaScript.
+
+### 3.4. Обновление сессии — `POST /api/v1/auth/refresh`
+
+Без JSON-тела. Браузер отправляет cookie `refresh_token` автоматически при `credentials: 'include'`.
+
+**Response `200 OK`**: новый `AuthResponse` и обновлённая refresh-cookie. Сервер ротирует refresh token и отзывает старый. Если cookie отсутствует, просрочена или отозвана: `401 INVALID_REFRESH_TOKEN` и очистка cookie. Не отправлять Bearer токен для этого запроса.
+
+### 3.5. Выход — `POST /api/v1/auth/logout`
+
+Без JSON-тела. Сервер отзывает текущий refresh token, если он есть, и удаляет cookie (`Max-Age=0`, те же `Path` и другие применимые атрибуты). **Всегда `204 No Content`**, даже если сессия уже завершена. React очищает access token и состояние пользователя.
+
+### 3.6. Текущий пользователь — `GET /api/v1/users/me`
+
+**Request header**: `Authorization: Bearer <accessToken>`.
+
+**Response `200 OK`**:
+
+```json
+{
+  "id": "c71c6214-b925-4baf-8a7a-530b6fd23d45",
+  "displayName": "Roman",
+  "email": "roman@example.com",
+  "createdAt": "2026-11-19T09:00:00Z"
+}
+```
+
+При отсутствующем, недействительном или просроченном access token — `401 UNAUTHORIZED`.
+
+### 3.7. Ping — `GET /api/v1/ping`
+
+**Response `200 OK`**:
+
+```json
+{"status":"ok"}
+```
+
+## 4. Cookie, CORS и безопасность
+
+- Имя cookie: `refresh_token`; `HttpOnly`; `Path=/api/v1/auth`; `SameSite=Lax`; `Max-Age=604800` (7 суток).
+- В production обязательно `Secure`, HTTPS и host-only cookie (без `Domain`); в локальной HTTP-разработке `Secure=false`.
+- Разрешённый CORS origin для dev: **строго** `http://localhost:5173`, `Access-Control-Allow-Credentials: true`, разрешить `Content-Type`, `Authorization` и методы `GET`, `POST`, `OPTIONS`. Не использовать `*` вместе с credentials.
+- Каждый `POST /api/v1/auth/*` **обязан** содержать `Origin` из `AUTH_ALLOWED_ORIGINS` (по умолчанию `http://localhost:5173,http://localhost:8080`); иначе `403 FORBIDDEN_ORIGIN`. Для curl/Postman укажи заголовок `Origin` вручную. `SameSite=Lax` — дополнительная защита. Для фронтенда на **другом сайте** (не просто другом порту) потребуется отдельное решение `SameSite=None; Secure` и CSRF-защита.
+- Пароли хранить **только в виде адаптивного хеша** (например, Argon2id). Refresh-токены хранить в БД только в виде хеша, выполнять ротацию и отзыв при logout.
+- JWT подписывать серверным секретом/ключом из окружения, не коммитить ключи. Проверять подпись, срок действия, issuer и audience.
+- MVP rate limiting: до 20 запросов в минуту на IP + endpoint (in-memory, отдельно на каждом экземпляре; для production заменить на распределённый лимитер). Не логировать пароли, токены и содержимое `Cookie`/`Authorization`.
+- Приватные API без Bearer возвращают `401`, а не HTML-страницу входа.
+
+## 5. Формат ошибок (единый для всех API)
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Некорректные данные запроса",
+    "details": [
+      { "field": "email", "message": "Некорректный email" }
+    ],
+    "requestId": "8f50c891-890e-4f09-96b9-90149db8eb3b"
+  }
+}
+```
+
+`details` — необязательный массив (обычно для валидации); `requestId` — необязательный идентификатор запроса для диагностики.
+
+| HTTP | `error.code` | Когда |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | Пустые/некорректные поля, неправильный JSON |
+| `401` | `INVALID_CREDENTIALS` | Неверный email или пароль |
+| `401` | `INVALID_REFRESH_TOKEN` | Нет действующей refresh-cookie |
+| `401` | `UNAUTHORIZED` | Bearer отсутствует/просрочен/невалиден |
+| `409` | `EMAIL_ALREADY_EXISTS` | Email уже зарегистрирован |
+| `429` | `TOO_MANY_REQUESTS` | Слишком много попыток; заголовок `Retry-After` |
+| `403` | `FORBIDDEN_ORIGIN` | Нет заголовка Origin либо он не в allowlist |
+| `500` | `INTERNAL_ERROR` | Ошибка сервера без утечки технических деталей |
+
+## 6. Сценарии React (обязательное поведение)
+
+1. **Регистрация:** `/register` → проверка полей → `POST /auth/register` → сохранить `accessToken` в памяти → перейти на `/profile`.
+2. **Вход:** `/login` → `POST /auth/login` → сохранить access token в памяти → перейти на `/profile`.
+3. **Перезагрузка вкладки:** access token в памяти пропал → однократно вызвать `POST /auth/refresh` с cookie → восстановить пользователя и access token либо показать `/login`.
+4. **Защищённый маршрут:** при открытии `/profile` проверять состояние авторизации; не показывать приватные данные до завершения проверки.
+5. **Запросы к защищённым API:** передавать `Authorization: Bearer ...`. При `401` один раз выполнить `/auth/refresh`, затем повторить исходный запрос **только один раз**. При повторном `401` — выйти из сессии.
+6. **Выход:** `POST /auth/logout` с cookie → очистить локальное состояние даже при сетевой ошибке → перенаправить на `/login`.
+7. **Ошибки формы:** отображать `error.message`, а `details[].field` сопоставлять с полями формы. Не выводить технические стектрейсы.
+
+### Пример запросов в React + TypeScript
+
+Файл `.env.local` (для Vite):
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+```ts
+const API = `${import.meta.env.VITE_API_BASE_URL}/api/v1`;
+
+export async function login(email: string, password: string) {
+  const response = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // отправка/получение HttpOnly refresh-cookie
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) throw await response.json();
+  return response.json(); // AuthResponse; accessToken хранить в памяти
+}
+
+export async function refresh() {
+  const response = await fetch(`${API}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) throw await response.json();
+  return response.json(); // AuthResponse
+}
+
+export async function getMe(accessToken: string) {
+  const response = await fetch(`${API}/users/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw await response.json();
+  return response.json(); // User
+}
+```
+
+Это пример интеграции, **не готовый React-проект**. Для реального приложения обернуть вызовы в типизированный API-клиент и единый AuthContext/provider.
+
+## 7. Что реализует Backend (входит в патч)
+
+- Flyway-миграции: `users` (`id UUID`, `email` уникальный без учёта регистра, `display_name`, `password_hash`, `created_at`, `updated_at`) и `refresh_tokens` (`id`, `user_id`, `token_hash`, `expires_at`, `revoked_at`, `created_at`), индексы.
+- DTO, валидация, контроллеры и сервисы для пяти новых API; JWT-подпись/проверка; хеширование паролей; ротация refresh-токенов.
+- CORS, проверка Origin/CSRF, JSON-ответы 401/403, единый `@RestControllerAdvice` для ошибок.
+- Интеграционные тесты: успешная регистрация/вход, дубликат email, неверный пароль, `GET /me` с/без JWT, refresh/rotation, logout/revoke, валидация.
+- Подключить эти эндпоинты к Swagger/OpenAPI; изменить текущий `SecurityConfig`, который пока запрещает все новые маршруты.
+
+## 8. Что реализует Frontend
+
+- React + TypeScript, страницы `/register`, `/login`, `/profile` и компонент ProtectedRoute.
+- API-клиент с `credentials: 'include'` для cookie-эндпоинтов; AuthContext; состояние `loading/authenticated/anonymous`.
+- Формы и сообщения ошибок по единому контракту; logout; восстановление сессии после F5.
+- Никакого хранения JWT или refresh-token в `localStorage`/`sessionStorage`.
+
+## 9. Критерии приёмки (отметить после запуска)
+
+- [ ] Новый пользователь регистрируется и сразу попадает в профиль.
+- [ ] Повторная регистрация с тем же email возвращает `409 EMAIL_ALREADY_EXISTS`.
+- [ ] Правильный пароль даёт вход, неправильный — `401 INVALID_CREDENTIALS`.
+- [ ] После F5 пользователь остаётся авторизованным через refresh-cookie.
+- [ ] Истёкший access token обновляется один раз без зацикливания запросов.
+- [ ] После logout refresh-token больше не работает, приватные API дают `401`.
+- [ ] Swagger соответствует `docs/openapi.yaml`; backend и React проходят интеграционный smoke-test.
+
+## 10. Правило изменения контракта
+
+Если меняются URL, поля, коды ошибок, cookie-политика или статус-коды — сначала обновить `docs/openapi.yaml` и этот файл, согласовать изменение в Pull Request с backend- и frontend-разработчиками, затем менять реализацию. Для несовместимых изменений использовать `/api/v2`.
+
+
+## 11. Важные ограничения MVP
+
+- `POST /auth/logout` отзывает refresh-токен; ранее выпущенный access JWT действует до истечения срока (максимум 15 минут). Для мгновенного отзыва потребовались бы stateful blocklist / introspection.
+- Лимитер находится в памяти одного backend-контейнера, не синхронизируется между репликами и не учитывает пользователя за обратным прокси. Перед публичным запуском поставить rate limiting на gateway/Redis и настроить доверенные proxy IP.
+- Хранение refresh-токенов предусматривает плановую очистку истёкших/отозванных записей (пока нет scheduler).
+- HTTPS обязателен вне локальной разработки; переключить `AUTH_COOKIE_SECURE=true`, настроить CORS/Origin для реального домена и использовать отдельное защищённое хранилище секретов.
+- Swagger `/v3/api-docs` генерируется по контроллерам; согласованный контракт в `docs/openapi.yaml` является основной спецификацией.
+</file>
+
+<file path="docs/openapi.yaml">
+openapi: 3.0.3
+info:
+  title: GorkyCode2026 Backend API
+  version: 1.0.0
+  description: |
+    Контракт MVP для React + Spring Boot (реализуется патчем auth/docker).
+    POST /api/v1/auth/* требует заголовок Origin из AUTH_ALLOWED_ORIGINS,
+    иначе возвращает 403 FORBIDDEN_ORIGIN.
+servers:
+  - url: http://localhost:8080
+    description: Local Docker / development
+tags:
+  - name: Auth
+    description: Регистрация, вход и управление сессией
+  - name: Users
+    description: Профиль текущего пользователя
+  - name: System
+    description: Проверка работоспособности
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Регистрация пользователя и начало сессии
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              displayName: Roman
+              email: roman@example.com
+              password: StrongPass123!
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '201':
+          description: Пользователь зарегистрирован
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh_token cookie (не возвращается в JSON)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Вход по email и паролю
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: roman@example.com
+              password: StrongPass123!
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '200':
+          description: Успешный вход
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh_token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refresh
+      summary: Обновление сессии по refresh-cookie
+      description: |
+        Тело запроса отсутствует. Токен берётся только из HttpOnly-cookie.
+        Refresh token ротируется; прежний токен становится недействительным.
+      security:
+        - refreshCookie: []
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '200':
+          description: Сессия обновлена
+          headers:
+            Set-Cookie:
+              description: Новая HttpOnly refresh_token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/InvalidRefreshToken'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Завершение сессии
+      description: Идемпотентный выход; ответ 204 даже при отсутствии cookie.
+      security: []
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '204':
+          description: Сессия завершена; refresh-cookie удалена
+          headers:
+            Set-Cookie:
+              description: refresh_token с Max-Age=0
+              schema:
+                type: string
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: Профиль текущего пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/ping:
+    get:
+      tags: [System]
+      operationId: ping
+      summary: Проверка доступности backend (реализовано)
+      security: []
+      responses:
+        '200':
+          description: API работает
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+              example:
+                status: ok
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token в заголовке Authorization
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: HttpOnly cookie, устанавливается сервером; JS её не читает
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, email, password]
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 60
+          example: Roman
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: roman@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+          example: StrongPass123!
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          writeOnly: true
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, email, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: c71c6214-b925-4baf-8a7a-530b6fd23d45
+        displayName:
+          type: string
+          example: Roman
+        email:
+          type: string
+          format: email
+          example: roman@example.com
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-11-19T09:00:00Z'
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token, не сохранять в localStorage
+          example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLWlkIn0.signature
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Время жизни access token в секундах
+          example: 900
+        user:
+          $ref: '#/components/schemas/User'
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: email
+        message:
+          type: string
+          example: Некорректный email
+    ErrorDetails:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - INVALID_CREDENTIALS
+            - INVALID_REFRESH_TOKEN
+            - UNAUTHORIZED
+            - EMAIL_ALREADY_EXISTS
+            - TOO_MANY_REQUESTS
+            - FORBIDDEN_ORIGIN
+            - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        requestId:
+          type: string
+          format: uuid
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetails'
+    PingResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+  responses:
+    ForbiddenOrigin:
+      description: Обязательный Origin отсутствует или не разрешён
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: FORBIDDEN_ORIGIN
+              message: Недопустимый Origin
+    BadRequest:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Некорректные данные запроса
+              details:
+                - field: email
+                  message: Некорректный email
+    InvalidCredentials:
+      description: Неверный email или пароль
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: INVALID_CREDENTIALS
+              message: Неверный email или пароль
+    InvalidRefreshToken:
+      description: Refresh token отсутствует, просрочен или отозван
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: INVALID_REFRESH_TOKEN
+              message: Сессия истекла. Войдите снова.
+    Unauthorized:
+      description: Access token отсутствует или недействителен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Требуется авторизация
+    Conflict:
+      description: Пользователь с таким email уже существует
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: EMAIL_ALREADY_EXISTS
+              message: Этот email уже зарегистрирован
+    TooManyRequests:
+      description: Превышен лимит запросов
+      headers:
+        Retry-After:
+          description: Через сколько секунд можно повторить запрос
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: TOO_MANY_REQUESTS
+              message: Слишком много попыток. Попробуйте позже.
+</file>
+
+<file path="frontend/src/api/auth.api.ts">
+import { request } from './client';
+import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth.types';
+
+export const authApi = {
+  register: (payload: RegisterRequest) => request<AuthResponse>('/auth/register', {
+    method: 'POST', credentials: 'include', body: JSON.stringify(payload),
+  }),
+  login: (payload: LoginRequest) => request<AuthResponse>('/auth/login', {
+    method: 'POST', credentials: 'include', body: JSON.stringify(payload),
+  }),
+  refresh: () => request<AuthResponse>('/auth/refresh', {
+    method: 'POST', credentials: 'include',
+  }),
+  logout: () => request<void>('/auth/logout', {
+    method: 'POST', credentials: 'include',
+  }),
+  me: (accessToken: string) => request<User>('/users/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  }),
+};
+</file>
+
+<file path="frontend/src/api/client.ts">
+import type { ApiErrorBody } from "../types/auth.types";
+
+
+const API_BASE_URL = `${
+  (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080')
+    .replace(/\/$/, '')
+}/api/v1`;
+
+export class ApiError extends Error {
+  public readonly status: number;
+  public readonly body: ApiErrorBody;
+
+  constructor(status: number, body: ApiErrorBody) {
+    super(body.error.message);
+
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
+    });
+  } catch {
+    throw new Error('Нет соединения с сервером. Проверьте адрес API и CORS.');
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as ApiErrorBody | null;
+    throw new ApiError(response.status, body?.error?.message ? body : {
+      error: { code: 'INTERNAL_ERROR', message: `Ошибка сервера (HTTP ${response.status})` },
+    });
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+</file>
+
+<file path="frontend/src/components/routing/GuestRoute.tsx">
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+export function GuestRoute() {
+  const { status } = useAuth();
+
+  if (status === 'loading') {
+    return <p>Проверяем авторизацию...</p>;
+  }
+
+  if (status === 'authenticated') {
+    return <Navigate to="/profile" replace />;
+  }
+
+  return <Outlet />;
+}
+</file>
+
+<file path="frontend/src/components/routing/ProtectedRoute.tsx">
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+export function ProtectedRoute() {
+  const { status } = useAuth();
+  const location = useLocation();
+
+  if (status === 'loading') {
+    return <p>Проверяем авторизацию...</p>;
+  }
+
+  if (status === 'anonymous') {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    );
+  }
+
+  return <Outlet />;
+}
+</file>
+
+<file path="frontend/src/components/FormError.tsx">
+import { ApiError } from '../api/client';
+export function getFormError(error: unknown) {
+  return error instanceof Error ? error.message : 'Неизвестная ошибка';
+}
+export function getFieldError(
+  error: unknown,
+  field: string
+): string | undefined {
+  if (!(error instanceof ApiError)) {
+    return undefined;
+  }
+
+  return error.body.error.details?.find(
+    (item) => item.field === field
+  )?.message;
+}
+</file>
+
+<file path="frontend/src/components/ProtectedRoute.tsx">
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+export function ProtectedRoute() {
+  const { status } = useAuth();
+  if (status === 'loading') return <p>Проверяем сессию…</p>;
+  return status === 'authenticated' ? <Outlet /> : <Navigate to="/login" replace />;
+}
+</file>
+
+<file path="frontend/src/context/AuthContext.tsx">
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { authApi } from '../api/auth.api';
+import { ApiError } from '../api/client';
+import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth.types';
+
+type Status = 'loading' | 'authenticated' | 'anonymous';
+interface AuthContextValue {
+  status: Status;
+  user: User | null;
+  login: (payload: LoginRequest) => Promise<void>;
+  register: (payload: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  getMe: () => Promise<User>;
+}
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// Единственный refresh одновременно: исключает гонку ротации cookie.
+let refreshInFlight: Promise<AuthResponse> | null = null;
+function refreshOnce() {
+  if (!refreshInFlight) {
+    refreshInFlight = authApi.refresh().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<Status>('loading');
+  const [user, setUser] = useState<User | null>(null);
+  const token = useRef<string | null>(null);
+  const generation = useRef(0);
+
+  const clear = useCallback(() => {
+    generation.current += 1;
+    token.current = null;
+    setUser(null);
+    setStatus('anonymous');
+  }, []);
+
+  const apply = useCallback((response: AuthResponse) => {
+    token.current = response.accessToken;
+    setUser(response.user);
+    setStatus('authenticated');
+  }, []);
+
+  useEffect(() => {
+    const current = generation.current;
+    void refreshOnce().then(response => {
+      if (generation.current === current) apply(response);
+    }).catch(() => {
+      if (generation.current === current) clear();
+    });
+    // Не отменяем запрос при StrictMode: refreshOnce объединяет параллельные вызовы.
+  }, [apply, clear]);
+
+  const login = useCallback(async (payload: LoginRequest) => {
+    const response = await authApi.login(payload);
+    generation.current += 1;
+    apply(response);
+  }, [apply]);
+  const register = useCallback(async (payload: RegisterRequest) => {
+    const response = await authApi.register(payload);
+    generation.current += 1;
+    apply(response);
+  }, [apply]);
+  const logout = useCallback(async () => {
+    // Сначала очищаем локальные данные, даже если сеть недоступна.
+    clear();
+    try { await authApi.logout(); } catch { /* локальный выход всё равно выполнен */ }
+  }, [clear]);
+
+  const getMe = useCallback(async (): Promise<User> => {
+    if (!token.current) throw new Error('Требуется авторизация');
+    try {
+      const profile = await authApi.me(token.current);
+      setUser(profile);
+      return profile;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      try {
+        const renewed = await refreshOnce();
+        apply(renewed);
+        const profile = await authApi.me(renewed.accessToken); // единственный повтор
+        setUser(profile);
+        return profile;
+      } catch (retryError) {
+        if (retryError instanceof ApiError && retryError.status === 401) clear();
+        throw retryError;
+      }
+    }
+  }, [apply, clear]);
+
+  return <AuthContext.Provider value={{ status, user, login, register, logout, getMe }}>{children}</AuthContext.Provider>;
+}
+export function useAuth() {
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('useAuth должен вызываться внутри AuthProvider');
+  return value;
+}
+</file>
+
+<file path="frontend/src/pages/HomePage/HomePage.module.css">
+
+</file>
+
+<file path="frontend/src/pages/NotFoundPage/NotFoundPage.tsx">
+export function NotFoundPage() {
+  return (
+    <div>
+      <h1>404 - Страница не найдена</h1>
+      <p>Извините, страница, которую вы ищете, не существует.</p>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/pages/ProfilePage/ProfilePage.tsx">
+export function ProfilePage() {
+  return (
+    <div>
+      <h1>Профиль</h1>
+      <p>Добро пожаловать на страницу профиля!</p>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/router/AppRouter.tsx">
+import { Route, Routes } from 'react-router-dom';
+
+import { ProtectedRoute } from '../components/routing/ProtectedRoute';
+import { GuestRoute } from '../components/routing/GuestRoute';
+
+import { HomePage } from '../pages/HomePage/HomePage';
+import { LoginPage } from '../pages/LoginPage/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage/RegisterPage';
+import { ProfilePage } from '../pages/ProfilePage/ProfilePage';
+import { NotFoundPage } from '../pages/NotFoundPage/NotFoundPage';
+
+export function AppRouter() {
+  return (
+    <Routes>
+      {/* Главная страница */}
+      <Route path="/" element={<HomePage />} />
+
+      {/* Только для гостей */}
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      {/* Только для авторизованных */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/profile" element={<ProfilePage />} />
+      </Route>
+
+      {/* Несуществующие страницы */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+}
+</file>
+
+<file path="frontend/src/styles/fonts.css">
+
+</file>
+
+<file path="frontend/src/styles/global.css">
+
+</file>
+
+<file path="frontend/src/styles/index.css">
+@import "./variables.css";
+@import "./reset.css";
+@import "./fonts.css";
+@import "./global.css";
+</file>
+
+<file path="frontend/src/styles/reset.css">
+/**
+  Нормализация блочной модели
+ */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+/**
+  Убираем внутренние отступы слева тегам списков,
+  у которых есть атрибут class
+ */
+:where(ul, ol):where([class]) {
+  padding-left: 0;
+}
+
+/**
+  Убираем внешние отступы body и двум другим тегам,
+  у которых есть атрибут class
+ */
+body,
+:where(blockquote, figure):where([class]) {
+  margin: 0;
+}
+
+/**
+  Убираем внешние отступы вертикали нужным тегам,
+  у которых есть атрибут class
+ */
+:where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  ul,
+  ol,
+  dl
+):where([class]) {
+  margin-block: 0;
+}
+
+:where(dd[class]) {
+  margin-left: 0;
+}
+
+:where(fieldset[class]) {
+  margin-left: 0;
+  padding: 0;
+  border: none;
+}
+
+/**
+  Убираем стандартный маркер маркированному списку,
+  у которого есть атрибут class
+ */
+:where(ul[class]) {
+  list-style: none;
+}
+
+:where(address[class]) {
+  font-style: normal;
+}
+
+/**
+  Обнуляем вертикальные внешние отступы параграфа,
+  объявляем локальную переменную для внешнего отступа вниз,
+  чтобы избежать взаимодействие с более сложным селектором
+ */
+p {
+  --paragraphMarginBottom: 24px;
+
+  margin-block: 0;
+}
+
+/**
+  Внешний отступ вниз для параграфа без атрибута class,
+  который расположен не последним среди своих соседних элементов
+ */
+p:where(:not([class]):not(:last-child)) {
+  margin-bottom: var(--paragraphMarginBottom);
+}
+
+
+/**
+  Упрощаем работу с изображениями и видео
+ */
+img,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/**
+  Наследуем свойства шрифт для полей ввода
+ */
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+html {
+  /**
+    Пригодится в большинстве ситуаций
+    (когда, например, нужно будет "прижать" футер к низу сайта)
+   */
+  height: 100%;
+  /**
+    Убираем скачок интерфейса по горизонтали
+    при появлении / исчезновении скроллбара
+   */
+  scrollbar-gutter: stable;
+}
+
+/**
+  Плавный скролл
+ */
+html,
+:has(:target) {
+  scroll-behavior: smooth;
+}
+
+body {
+  /**
+    Пригодится в большинстве ситуаций
+    (когда, например, нужно будет "прижать" футер к низу сайта)
+   */
+  min-height: 100%;
+  /**
+    Унифицированный интерлиньяж
+   */
+  line-height: 1.5;
+}
+
+/**
+  Нормализация высоты элемента ссылки при его инспектировании в DevTools
+ */
+a:where([class]) {
+  display: inline-flex;
+}
+
+/**
+  Курсор-рука при наведении на элемент
+ */
+button,
+label {
+  cursor: pointer;
+}
+
+/**
+  Приводим к единому цвету svg-элементы
+ */
+[fill] { fill: currentColor }
+[stroke] { stroke: currentColor }
+
+/**
+  Чиним баг задержки смены цвета при взаимодействии с svg-элементами
+ */
+svg * {
+  transition-property: fill, stroke;
+}
+
+/**
+  Удаляем все анимации и переходы для людей,
+  которые предпочитают их не использовать
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+</file>
+
+<file path="frontend/src/styles/variables.css">
+
+</file>
+
+<file path="frontend/src/types/auth.types.ts">
+export interface User {
+  id: string;
+  displayName: string;
+  email: string;
+  createdAt: string;
+}
+export interface LoginRequest { email: string; password: string }
+export interface RegisterRequest extends LoginRequest { displayName: string }
+export interface AuthResponse {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number;
+  user: User;
+}
+export interface FieldError { field: string; message: string }
+export interface ApiErrorBody {
+  error: {
+    code: 'VALIDATION_ERROR' | 'INVALID_CREDENTIALS' | 'INVALID_REFRESH_TOKEN' | 'UNAUTHORIZED' | 'EMAIL_ALREADY_EXISTS' | 'TOO_MANY_REQUESTS' | 'INTERNAL_ERROR';
+    message: string;
+    details?: FieldError[];
+    requestId?: string;
+  };
+}
+</file>
+
+<file path="frontend/src/main.tsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+</file>
+
+<file path="frontend/.dockerignore">
+node_modules
+dist
+dist-ssr
+.git
+.gitignore
+
+.env
+.env.*
+!.env.example
+
+*.log
+.vscode
+.idea
+coverage
+README.md
+</file>
+
+<file path="frontend/Dockerfile">
+# Этап 1: сборка React-приложения
+FROM node:24-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm ci
+
+COPY . .
+
+# Пустой адрес означает запросы к /api/v1
+# на том же домене, что и фронтенд.
+ARG VITE_API_BASE_URL=""
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+RUN npm run build
+
+# Этап 2: запуск через Nginx
+FROM nginx:stable-alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+</file>
+
+<file path="frontend/index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gorkycode</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="frontend/nginx.conf">
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Frontend: React Router
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Backend: Spring Boot API
+    location /api/ {
+        proxy_pass http://backend:8080;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Кеширование статических файлов Vite
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+</file>
+
+<file path="frontend/README.md">
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the Oxlint configuration
+
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+
+```json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+```
+
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+</file>
+
+<file path="frontend/tsconfig.app.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "allowArbitraryExtensions": true,
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+</file>
+
+<file path="frontend/tsconfig.json">
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+</file>
+
+<file path="frontend/tsconfig.node.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "module": "nodenext",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+</file>
+
+<file path="frontend/vite.config.ts">
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+</file>
+
+<file path=".editorconfig">
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.{yaml,yml}]
+indent_size = 2
+</file>
+
+<file path=".gitignore">
+# Build output (root or nested modules)
+**/target/
+*.class
+*.log
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+!.env.example
+frontend/.env.local
+
+node_modules
+</file>
+
+<file path="pom.xml">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.gorkycode2026</groupId>
+    <artifactId>gorkycode2026</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>GorkyCode2026</name>
+    <description>Parent aggregator for GorkyCode2026</description>
+    <modules>
+        <module>backend</module>
+    </modules>
+</project>
+</file>
+
+<file path="backend/src/main/java/com/gorkycode2026/backend/config/SecurityConfig.java">
+package com.gorkycode2026.backend.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gorkycode2026.backend.auth.web.ApiErrorWriter;
+import com.gorkycode2026.backend.auth.web.AuthRateLimitFilter;
+import com.gorkycode2026.backend.auth.web.OriginVerificationFilter;
+import java.util.Arrays;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        // Argon2id. Spring Security uses Bouncy Castle (already present in pom.xml).
+        return Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(@Value("${app.auth.allowed-origins}") String originsCsv) {
+        CorsConfiguration cors = new CorsConfiguration();
+        cors.setAllowedOrigins(Arrays.stream(originsCsv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+        cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        cors.setAllowedHeaders(List.of("Content-Type", "Authorization"));
+        cors.setAllowCredentials(true);
+        cors.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cors);
+        return source;
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+            ObjectMapper mapper,
+            @Value("${app.auth.allowed-origins}") String originsCsv) throws Exception {
+        // Access uses Bearer JWT, not a CSRF-sensitive cookie. Refresh/logout cookies
+        // are protected by mandatory strict Origin checking + SameSite=Lax below.
+        OriginVerificationFilter originFilter = new OriginVerificationFilter(originsCsv, mapper);
+        AuthRateLimitFilter rateFilter = new AuthRateLimitFilter(mapper);
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/ping", "/actuator/health", "/actuator/health/**", "/actuator/info",
+                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
+                                "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                        .anyRequest().denyAll())
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((req, res, ex) ->
+                                ApiErrorWriter.write(res, mapper, 401, "UNAUTHORIZED", "Требуется авторизация"))
+                        .accessDeniedHandler((req, res, ex) ->
+                                ApiErrorWriter.write(res, mapper, 403, "FORBIDDEN", "Доступ запрещён")))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(Customizer.withDefaults())
+                        .authenticationEntryPoint((req, res, ex) ->
+                                ApiErrorWriter.write(res, mapper, 401, "UNAUTHORIZED", "Требуется авторизация")))
+                .addFilterBefore(originFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+}
+</file>
+
+<file path="backend/src/main/resources/application.yml">
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gorkycode2026}
+    username: ${DB_USERNAME:backend}
+    password: ${DB_PASSWORD:local_dev_password_change_me}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+app:
+  auth:
+    # Required in Docker (compose.yaml) and when launching directly from IDEA.
+    jwt-secret: ${AUTH_JWT_SECRET:}
+    jwt-issuer: gorkycode2026
+    jwt-audience: gorkycode2026-frontend
+    access-ttl-seconds: 900
+    refresh-ttl-days: 7
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  health:
+    probes:
+      enabled: true
+</file>
+
+<file path="backend/Dockerfile">
+# syntax=docker/dockerfile:1
+
+# Both Maven and Temurin images publish linux/amd64 and linux/arm64 variants.
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /workspace
+COPY pom.xml ./
+RUN mvn -B -ntp dependency:go-offline
+COPY src ./src
+RUN mvn -B -ntp clean package
+
+# Non-Alpine runtime: supports AMD64 and Apple Silicon (ARM64).
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+# curl is used by the Compose healthcheck; no wget dependency on the base image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appgroup \
+    && useradd -r -g appgroup -s /usr/sbin/nologin appuser
+COPY --from=build /workspace/target/backend-0.0.1-SNAPSHOT.jar /app/backend.jar
+USER appuser:appgroup
+EXPOSE 8080
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
+ENTRYPOINT ["java", "-jar", "/app/backend.jar"]
+</file>
+
+<file path="backend/pom.xml">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.6</version>
+        <relativePath/>
+    </parent>
+    <groupId>com.gorkycode2026</groupId>
+    <artifactId>backend</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>backend</name>
+    <description>GorkyCode2026 backend</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <springdoc.version>2.8.9</springdoc.version>
+    </properties>
+
+    <dependencies>
+        <!-- Health / liveness endpoints for Docker -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- RFC 8291 Web Push encryption and VAPID signing -->
+        <dependency>
+            <groupId>nl.martijndwars</groupId>
+            <artifactId>web-push</artifactId>
+            <version>5.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.13.1</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Bouncy Castle: криптография для Web Push / VAPID -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.83</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Optional integration tests: need local Docker/Podman-compatible runtime. -->
+    <profiles>
+        <profile>
+            <id>integration-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>3.5.2</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
+</file>
+
+<file path="frontend/src/pages/HomePage/HomePage.tsx">
+export function HomePage() {
+  return (
+    <div>
+      <h1>Главная страница</h1>
+      <p>Добро пожаловать на главную страницу!</p>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/src/pages/LoginPage/LoginPage.module.css">
+.card {
+  width: min(100% - 32px, 420px);
+  margin: 64px auto;
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #fff;
+}
+
+.card h1 {
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 28px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  outline: none;
+}
+
+.form input:focus {
+  border-color: #2355b8;
+}
+
+.card button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #2355b8;
+  color: #fff;
+  cursor: pointer;
+}
+
+.card button:hover:not(:disabled) {
+  background-color: #194394;
+}
+
+.card button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.card > p {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.card a {
+  color: #2355b8;
+}
+
+.error,
+.form small {
+  color: #b42318;
+}
+
+.error {
+  margin: 0;
+}
+</file>
+
+<file path="frontend/src/pages/LoginPage/LoginPage.tsx">
+import { useState, type FormEvent } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { getFieldError, getFormError } from '../../components/FormError';
+import styles from './LoginPage.module.css';
+
+export function LoginPage() {
+  const { login, status } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (status === 'authenticated') return <Navigate to="/profile" replace />;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setPending(true); setError(null);
+    try { await login({ email: email.trim(), password }); navigate('/profile', { replace: true }); }
+    catch (err) { setError(err); }
+    finally { setPending(false); }
+  }
+  return <main className={styles.card}>
+    <h1>Вход</h1>
+    <form onSubmit={submit} className={styles.form}>
+      <label>Email<input type="email" required maxLength={254} autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
+      {getFieldError(error, 'email') && <small role="alert">{getFieldError(error, 'email')}</small>}
+      <label>Пароль<input type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} /></label>
+      {getFieldError(error, 'password') && <small role="alert">{getFieldError(error, 'password')}</small>}
+      {error != null && <p role="alert" className={styles.error}>{getFormError(error)}</p>}
+      <button disabled={pending || status === 'loading'}>{pending ? 'Входим…' : 'Войти'}</button>
+    </form>
+    <p>Нет аккаунта? <Link to="/register">Зарегистрироваться</Link></p>
+  </main>;
+}
+</file>
+
+<file path="frontend/src/pages/RegisterPage/RegisterPage.module.css">
+.card {
+  width: min(100% - 32px, 440px);
+  margin: 64px auto;
+  padding: 28px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #fff;
+}
+
+.card h1 {
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 28px;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  outline: none;
+}
+
+.form input:focus {
+  border-color: #2355b8;
+}
+
+.card button {
+  margin-top: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #2355b8;
+  color: #fff;
+  cursor: pointer;
+}
+
+.card button:hover:not(:disabled) {
+  background-color: #194394;
+}
+
+.card button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.card > p {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.card a {
+  color: #2355b8;
+}
+
+.error,
+.form small {
+  color: #b42318;
+}
+
+.error {
+  margin: 0;
+}
+</file>
+
+<file path="frontend/src/pages/RegisterPage/RegisterPage.tsx">
+import { useState, type FormEvent } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { getFieldError, getFormError } from '../../components/FormError';
+import styles from './RegisterPage.module.css';
+
+export function RegisterPage() {
+  const { register, status } = useAuth();
+  const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (status === 'authenticated') return <Navigate to="/profile" replace />;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(null);
+    if (displayName.trim().length < 2) { setError(new Error('Имя должно содержать от 2 до 60 символов')); return; }
+    setPending(true);
+    try { await register({ displayName: displayName.trim(), email: email.trim(), password }); navigate('/profile', { replace: true }); }
+    catch (err) { setError(err); }
+    finally { setPending(false); }
+  }
+  return <main className={styles.card}>
+    <h1>Регистрация</h1>
+    <form onSubmit={submit} className={styles.form}>
+      <label>Имя<input required minLength={2} maxLength={60} autoComplete="name" value={displayName} onChange={e => setDisplayName(e.target.value)} /></label>
+      {getFieldError(error, 'displayName') && <small role="alert">{getFieldError(error, 'displayName')}</small>}
+      <label>Email<input type="email" required maxLength={254} autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} /></label>
+      {getFieldError(error, 'email') && <small role="alert">{getFieldError(error, 'email')}</small>}
+      <label>Пароль<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} /></label>
+      {getFieldError(error, 'password') && <small role="alert">{getFieldError(error, 'password')}</small>}
+      {error != null && <p role="alert" className={styles.error}>{getFormError(error)}</p>}
+      <button disabled={pending || status === 'loading'}>{pending ? 'Регистрируем…' : 'Зарегистрироваться'}</button>
+    </form>
+    <p>Уже есть аккаунт? <Link to="/login">Войти</Link></p>
+  </main>;
+}
+</file>
+
+<file path="frontend/src/App.tsx">
+import { BrowserRouter } from 'react-router-dom';
+
+import { AuthProvider } from './context/AuthContext';
+import { AppRouter } from './router/AppRouter';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "gorkycode",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  }
+}
+</file>
+
+<file path=".env.example">
+# Copy to .env for local development. Do NOT commit .env.
+POSTGRES_DB=gorkycode2026
+POSTGRES_USER=backend
+POSTGRES_PASSWORD=local_dev_password_change_me
+POSTGRES_PORT=5432
+APP_PORT=8080
+
+FRONTEND_PORT=3000
+
+# Mandatory: generate a new Base64-encoded random secret (at least 32 bytes).
+# PowerShell 5.1+: $b = New-Object byte[] 32; $r=[Security.Cryptography.RandomNumberGenerator]::Create(); $r.GetBytes($b); [Convert]::ToBase64String($b); $r.Dispose()
+# macOS/Linux: openssl rand -base64 32
+AUTH_JWT_SECRET=REPLACE_WITH_GENERATED_BASE64_SECRET
+AUTH_COOKIE_SECURE=false
+AUTH_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+</file>
+
+<file path="compose.yaml">
+name: gorkycode2026
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: backend
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
+
+  maven:
+    image: maven:3.9-eclipse-temurin-17
+    profiles: ["tools"]
+    working_dir: /workspace
+    volumes:
+      - ./backend:/workspace
+      - maven_cache:/root/.m2
+    command: ["mvn", "-B", "-ntp", "test"]
+
+volumes:
+  postgres_data:
+  maven_cache:
+</file>
+
+<file path="README.md">
+# GorkyCode2026
+
+Maven reactor + Spring Boot **3.5.6**, Java **17**, PostgreSQL **17**, Docker Compose.
+
+- `backend/` — Spring Boot API (регистрация, вход, JWT, refresh/logout, профиль).
+- `docs/API_CONTRACT.md` + `docs/openapi.yaml` — согласованный контракт для React.
+- `APPLY_PATCH.md` — инструкция по установке добавленных/изменённых файлов (если применён патч).
+
+## Первый запуск (Windows x86-64 или macOS Apple Silicon ARM64)
+
+1. Установить Docker Desktop, включить режим Linux containers (Windows).
+2. Создать `.env` из `.env.example`, если его нет. Если `.env` уже существует — **добавить только новые переменные**, не перезаписывать существующие пароли.
+3. Сгенерировать криптографически случайный Base64-секрет минимум из 32 байт:
+
+   - Windows PowerShell 5.1+:
+
+     ```powershell
+     $bytes = New-Object byte[] 32
+     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+     $rng.GetBytes($bytes)
+     [Convert]::ToBase64String($bytes)
+     $rng.Dispose()
+     ```
+
+   - macOS: `openssl rand -base64 32`
+
+4. В `.env` поставить `AUTH_JWT_SECRET=<выведенная Base64-строка>` и `AUTH_COOKIE_SECURE=false`. Не публиковать `.env` в Git.
+5. В корне проекта выполнить:
+
+   ```bash
+   docker compose config
+   docker compose up --build -d
+   docker compose ps
+   docker compose logs --tail=100 backend
+   ```
+
+6. Проверить:
+   - `http://localhost:8080/api/v1/ping` → `{"status":"ok"}`
+   - `http://localhost:8080/actuator/health` → `{"status":"UP"}`
+   - `http://localhost:8080/swagger-ui/index.html` → Swagger UI
+
+> Если порт 8080 изменён через `APP_PORT`, нужно также изменить `AUTH_ALLOWED_ORIGINS` в `.env`, добавив фактический backend origin. По умолчанию разрешены `http://localhost:5173` и `http://localhost:8080`.
+
+## Auth API
+
+| Метод | URL | Ответ |
+|---|---|---|
+| POST | `/api/v1/auth/register` | 201, AuthResponse + HttpOnly refresh-cookie |
+| POST | `/api/v1/auth/login` | 200, AuthResponse + HttpOnly refresh-cookie |
+| POST | `/api/v1/auth/refresh` | 200, AuthResponse + новая refresh-cookie |
+| POST | `/api/v1/auth/logout` | 204, удаление refresh-cookie |
+| GET | `/api/v1/users/me` | 200, профиль; нужен Bearer JWT |
+| GET | `/api/v1/ping` | 200, `{"status":"ok"}` |
+
+Любой `POST /api/v1/auth/*` требует `Origin` из `AUTH_ALLOWED_ORIGINS` (CSRF-защита для cookie-запросов). Браузер выставляет Origin автоматически, в терминале добавляй его вручную.
+
+### Запрос регистрации (PowerShell)
+
+```powershell
+$body = @{displayName='Roman'; email='roman@example.com'; password='StrongPass123!'} | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://localhost:8080/api/v1/auth/register' -Method Post -ContentType 'application/json' -Headers @{ Origin = 'http://localhost:5173' } -Body $body -SessionVariable session
+```
+
+Для проверки refresh/logout проще использовать Postman или React с `credentials: 'include'`. JWT из `accessToken` передаётся в `Authorization: Bearer <token>` на `GET /api/v1/users/me`. Полные JSON-схемы в `docs/openapi.yaml`.
+
+## Тестирование
+
+```bash
+# Unit-тесты, доступен Docker Compose service без локальных Java/Maven
+ docker compose run --rm maven
+
+# Полный интеграционный тест с Testcontainers (Docker должен быть доступен Maven на хосте)
+ cd backend
+ mvn -B -ntp verify -Pintegration-tests
+```
+
+В Dockerfile на стадии сборки `mvn clean package` запускает быстрые unit-тесты; `AuthApiIT` отдельно запускается через профиль `integration-tests` (не требует настоящей production-БД, создаёт временный контейнер PostgreSQL). Для этих тестов необходимы JDK 17, Maven и доступный Docker Engine на машине, откуда запускается Maven.
+
+## Docker
+
+- `backend/Dockerfile`: multi-stage Maven Java 17 + `eclipse-temurin:17-jre`; без привязки к `linux/amd64`.
+- База `postgres:17-alpine`, имя контейнерного хоста `db`, порт `5432`.
+- Healthcheck приложения: `curl`, установленный в runtime-образе.
+- Volume `postgres_data` хранит БД между перезапусками.
+- `docker compose down` **сохраняет** данные, а `docker compose down -v` **удаляет их безвозвратно**.
+
+## Безопасность MVP и границы
+
+- Секрет подписания JWT обязательно задать в `.env`; без него backend не запускается.
+- Access JWT 15 минут (только в памяти React), refresh-cookie HttpOnly, SameSite=Lax, Path `/api/v1/auth`, 7 дней.
+- Refresh-токены хранятся только как SHA-256 в БД и ротируются после каждого refresh.
+- Пароли хешируются с Argon2id.
+- Лимит 20 POST/мин на IP и маршрут для register/login/refresh — **локальный in-memory**; для нескольких реплик и production нужен gateway/Redis.
+- Logout отзывает refresh-токен, но **не** ранее выданный JWT до окончания его 15 минут.
+- Для production: HTTPS, `AUTH_COOKIE_SECURE=true`, реальные CORS origins, секреты в secret manager, централизованный лимитер, чистка таблицы refresh_tokens, наблюдаемость и CI/CD.
+
+## IntelliJ IDEA
+
+Открыть корень `GorkyCode2026` по `pom.xml`, использовать JDK 17 для запуска из IDE. В IDEA задать env-переменные `AUTH_JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` при прямом запуске `BackendApplication`, а для контейнерного запуска достаточно заполненного `.env`.
+</file>
+
+</files>
