@@ -74,3 +74,73 @@
 .error {
   margin: 0;
 }
+
+.cityField {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.cityPicker {
+  position: relative;
+}
+
+.cityPicker > input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  outline: none;
+}
+
+.cityPicker > input:focus {
+  border-color: #2355b8;
+}
+
+.cityOptions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.12);
+}
+
+.cityOption {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #101828;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cityOption:hover {
+  background: #f2f4f7;
+}
+
+.cityOption small {
+  color: #667085;
+  white-space: nowrap;
+}
+
+.cityStatus {
+  padding: 12px;
+  color: #667085;
+}
+
+.selectedCity {
+  color: #475467;
+}
