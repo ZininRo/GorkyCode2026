@@ -1,4 +1,65 @@
-# GorkyCode2026
+# GorkyCode2026 — «Открывай Нижний»
+
+Мобильный веб-сервис для туристов Нижнего Новгорода: **афиша в стиле Pinterest** и **городской квест** с кристаллами-чекпоинтами на карте. Кристаллы собираются по геолокации, за них начисляются очки, на 60 очках открывается уровень «Исследователь» и скрытый маршрут «За пределами открыток». После сбора показываются исторические подсказки, в том числе сгенерированные ИИ.
+
+## Возможности MVP
+
+| Экран / API | Что работает |
+|---|---|
+| Регистрация и вход | существующий модуль (email, пароль, город) без изменений |
+| Главная `/` | прогресс, баннер «Начать / Продолжить квест», фильтры, 2-колоночная лента 8 демо-карточек, окно подробностей |
+| Квест `/game` | карта Leaflet + OSM, жёлтые (малые) и зелёные (большие) кристаллы, маршруты с замком, сбор по GPS, демо-режим |
+| После сбора | +10/+30, историческая подсказка, AI-подсказка, карточка места для зелёного, «Новый маршрут!» |
+| Профиль `/profile` | никнейм, город и страна, уровень, очки, собранные точки, маршруты, рекомендации ИИ, выход |
+| Backend | `/events`, `/game`, `/checkpoints`, `/progress`, `/checkpoints/{id}/collect`, `/ai/hint`, `/ai/recommendations` |
+
+Контракт: [`docs/API_CONTRACT_MVP.md`](docs/API_CONTRACT_MVP.md). Запуск на macOS: [`SETUP_GUIDE.md`](SETUP_GUIDE.md). Тесты: [`TESTING.md`](TESTING.md). Изменения: [`CHANGES.md`](CHANGES.md). Ограничения: [`LIMITATIONS.md`](LIMITATIONS.md). Интеграция по зонам ответственности: [`docs/integration/SHARED_CHANGE_REQUESTS.md`](docs/integration/SHARED_CHANGE_REQUESTS.md).
+
+## Стек
+
+- Backend: Java 17, Spring Boot 3.5.6 (Web, Security + OAuth2 Resource Server/JWT, Data JPA/JDBC, Validation, Flyway), PostgreSQL 17. **Новых Maven-зависимостей нет**: ИИ вызывается через `java.net.http`.
+- Frontend: React 19, TypeScript, Vite, react-router 7. **Новых npm-зависимостей нет**: Leaflet 1.9.4 подгружается с CDN только на экране квеста.
+- Docker Compose: `db`, `backend`, `frontend` (nginx + прокси `/api`).
+
+## Быстрый старт
+
+```bash
+cp -n .env.example .env                       # затем задать AUTH_JWT_SECRET (openssl rand -base64 32)
+# для показа в помещении: GAME_DEMO_MODE=true; для ИИ: AI_ENABLED=true и AI_API_KEY=...
+docker compose up --build -d
+open http://localhost:5173
+./scripts/smoke-test.sh http://localhost:8080  # проверка API (нужен jq)
+```
+
+Демо-сценарий: регистрация → главная → карточка афиши → «Начать квест» → сбор cp_y01, cp_y02, cp_g01, cp_y03 (10 + 10 + 30 + 10 = 60) → «Исследователь» и открытый маршрут → перезагрузка без потери прогресса → повторный сбор даёт +0.
+
+## Игровые правила
+
+| Кристалл | Очки | После сбора |
+|---|---|---|
+| Жёлтый (малый) | 10 | короткая историческая подсказка |
+| Зелёный (большой) | 30 | подсказка + карточка места |
+
+0–59 очков — «Новичок», от 60 — «Исследователь» и маршрут `hidden`. Радиус сбора 100 м, точность GPS не хуже 100 м (настраивается). Каждую точку можно собрать один раз. Источник истины по очкам — сервер.
+
+## Переменные окружения (новые)
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `GAME_DEMO_MODE` | `false` | кнопка «Я на месте (демо)»; только для демо-стенда |
+| `GAME_COLLECT_RADIUS_METERS` | `100` | радиус сбора |
+| `GAME_MAX_GPS_ACCURACY_METERS` | `100` | максимально допустимая погрешность GPS |
+| `AI_ENABLED` | `false` | включить вызовы LLM |
+| `AI_BASE_URL` | `https://api.openai.com/v1` | любой OpenAI-совместимый `/chat/completions` |
+| `AI_API_KEY` | пусто | ключ провайдера (только в `.env`) |
+| `AI_MODEL` | `gpt-4o-mini` | модель |
+| `AI_TIMEOUT_SECONDS` | `8` | таймаут; при превышении — fallback |
+| `AI_PROJECT` | пусто | folder ID Yandex Cloud, отправляется заголовком `OpenAI-Project`; пусто — заголовок не отправляется. Настройка YandexGPT: [`YANDEX_SETUP_GUIDE.md`](YANDEX_SETUP_GUIDE.md) |
+
+---
+
+# Исходный README (инфраструктура и auth)
+
 
 Maven reactor + Spring Boot **3.5.6**, Java **17**, PostgreSQL **17**, Docker Compose.
 

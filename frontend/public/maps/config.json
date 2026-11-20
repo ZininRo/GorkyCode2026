@@ -1,0 +1,9 @@
+{
+  "styleUrl": "/maps/nizhny-rpg.json",
+  "center": [44.0035, 56.328],
+  "zoom": 14.2,
+  "minZoom": 10,
+  "maxZoom": 19,
+  "initialBounds": [43.97, 56.30, 44.04, 56.35],
+  "cluster": true
+}

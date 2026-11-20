@@ -2,7 +2,7 @@ import type { ApiErrorBody } from "../types/auth.types";
 
 
 const API_BASE_URL = `${
-  (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080')
+  (import.meta.env.VITE_API_BASE_URL ?? '')
     .replace(/\/$/, '')
 }/api/v1`;
 
@@ -26,7 +26,8 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
       ...options,
       headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
     });
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
     throw new Error('Нет соединения с сервером. Проверьте адрес API и CORS.');
   }
   if (!response.ok) {

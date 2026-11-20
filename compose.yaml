@@ -36,6 +36,16 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      # MVP quest (game/ai). Requested change, see docs/integration/SHARED_CHANGE_REQUESTS.md
+      GAME_DEMO_MODE: ${GAME_DEMO_MODE:-false}
+      GAME_COLLECT_RADIUS_METERS: ${GAME_COLLECT_RADIUS_METERS:-100}
+      GAME_MAX_GPS_ACCURACY_METERS: ${GAME_MAX_GPS_ACCURACY_METERS:-100}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-8}
+      AI_PROJECT: ${AI_PROJECT:-}
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     healthcheck:
@@ -44,6 +54,25 @@ services:
       timeout: 5s
       retries: 12
       start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   maven:
     image: maven:3.9-eclipse-temurin-17

@@ -1,0 +1,50 @@
+### MVP quest + AI (owners: Юля — game/events, Рома — ai). Paste accessToken from register/login.
+@base = http://localhost:8080/api/v1
+@token = PASTE_ACCESS_TOKEN
+
+### Public discovery feed (афиша)
+GET {{base}}/events?category=all
+
+### Only festivals
+GET {{base}}/events?category=festivals
+
+### Game state: progress, routes, visible checkpoints
+GET {{base}}/game
+Authorization: Bearer {{token}}
+
+### Progress only
+GET {{base}}/progress
+Authorization: Bearer {{token}}
+
+### Collect cp_y01 standing at its coordinates
+POST {{base}}/checkpoints/cp_y01/collect
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"lat": 56.32370, "lng": 44.00200, "accuracyMeters": 15}
+
+### Too far -> 403 TOO_FAR
+POST {{base}}/checkpoints/cp_y02/collect
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"lat": 56.30000, "lng": 43.90000, "accuracyMeters": 15}
+
+### Hidden route before 60 points -> 403 ROUTE_LOCKED
+POST {{base}}/checkpoints/cp_g02/collect
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"lat": 56.32940, "lng": 43.99380, "accuracyMeters": 15}
+
+### AI hint for a collected checkpoint
+GET {{base}}/ai/hint?checkpointId=cp_y01&lang=ru
+Authorization: Bearer {{token}}
+
+### AI recommendations by level
+GET {{base}}/ai/recommendations?lang=ru
+Authorization: Bearer {{token}}
+
+### AI status
+GET {{base}}/ai/status
+Authorization: Bearer {{token}}

@@ -1,0 +1,41 @@
+.frame {
+  position: relative;
+  background: #e6d3a2;
+  border: 3px solid #554335;
+  box-shadow: 3px 3px 0 #927655, inset 0 0 0 2px #fff2cd;
+}
+
+.map {
+  width: 100%;
+  height: clamp(360px, 63dvh, 760px);
+}
+
+.map :global(.maplibregl-ctrl-group) {
+  border-radius: 0;
+  background: #fff2cd;
+  box-shadow: 2px 2px 0 #554335;
+}
+
+.map :global(.maplibregl-ctrl-group button) {
+  width: 44px;
+  height: 44px;
+}
+
+.map :global(.maplibregl-ctrl-attrib) {
+  max-width: min(94vw, 100%);
+  background-color: #fff2cd;
+  color: #473629;
+  white-space: normal;
+  font-size: 11px;
+}
+
+.notice {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: calc(100% - 76px);
+  margin: 0;
+  padding: 8px 12px;
+  background: #fff2cd;
+  border: 2px solid #554335;
+}

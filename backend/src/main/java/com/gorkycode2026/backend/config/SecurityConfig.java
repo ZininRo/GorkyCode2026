@@ -36,7 +36,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(@Value("${app.auth.allowed-origins}") String originsCsv) {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(Arrays.stream(originsCsv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
-        cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Content-Type", "Authorization"));
         cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
@@ -67,6 +67,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+                        // MVP quest (game/events/ai). Requested change, see docs/integration/SHARED_CHANGE_REQUESTS.md
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/*", "/api/v1/discovery").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/game", "/api/v1/checkpoints", "/api/v1/checkpoints/*", "/api/v1/progress",
+                                "/api/v1/ai/hint", "/api/v1/ai/recommendations", "/api/v1/ai/status").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/checkpoints/*/collect").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/quests", "/api/v1/quest-runs", "/api/v1/guided",
+                                "/api/v1/quest-runs/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/quests/*/start", "/api/v1/guided/*/start", "/api/v1/guided/*/stops/*/collect",
+                                "/api/v1/quest-runs/*/steps/*/collect").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/quest-runs/*/steps/*/reaction", "/api/v1/guided/*/stops/*/reaction",
+                                "/api/v1/guided/bookmarks/*").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((req, res, ex) ->

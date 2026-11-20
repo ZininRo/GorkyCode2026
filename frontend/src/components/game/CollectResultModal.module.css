@@ -1,0 +1,75 @@
+.badgeYellow,
+.badgeGreen {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badgeYellow {
+  background: #fdf1c7;
+  color: var(--color-yellow-dark);
+}
+
+.badgeGreen {
+  background: #d5f2e3;
+  color: var(--color-green-dark);
+}
+
+.notice {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted-bg);
+}
+
+.celebrate {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e6f0ff;
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+
+.sectionTitle {
+  margin: 14px 0 4px;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.placeCard {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.placeCard img {
+  display: block;
+  width: 100%;
+}
+
+.placeCard h3,
+.placeCard p {
+  margin: 8px 12px;
+}
+
+.score {
+  margin-top: 14px;
+}
+
+.okButton {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

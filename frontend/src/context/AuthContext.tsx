@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { authApi } from '../api/auth.api';
-import { ApiError } from '../api/client';
+import { ApiError, request } from '../api/client';
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../types/auth.types';
 
 type Status = 'loading' | 'authenticated' | 'anonymous';
@@ -11,6 +11,8 @@ interface AuthContextValue {
   register: (payload: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   getMe: () => Promise<User>;
+  /** MVP quest: запрос к защищённому API с Bearer-токеном и одним повтором после refresh. */
+  authRequest: <T>(path: string, options?: RequestInit) => Promise<T>;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -89,7 +91,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [apply, clear]);
 
-  return <AuthContext.Provider value={{ status, user, login, register, logout, getMe }}>{children}</AuthContext.Provider>;
+  // Добавлено для MVP-квеста (game/events/ai): та же схема, что в getMe — токен в памяти,
+  // при 401 единственный refresh через refreshOnce и один повтор запроса.
+  const authRequest = useCallback(async <T,>(path: string, options: RequestInit = {}): Promise<T> => {
+    const send = (accessToken: string) => request<T>(path, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${accessToken}` },
+    });
+    if (!token.current) {
+      throw new ApiError(401, { error: { code: 'UNAUTHORIZED', message: 'Требуется авторизация' } });
+    }
+    try {
+      return await send(token.current);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      try {
+        const renewed = await refreshOnce();
+        apply(renewed);
+        return await send(renewed.accessToken);
+      } catch (retryError) {
+        if (retryError instanceof ApiError && retryError.status === 401) clear();
+        throw retryError;
+      }
+    }
+  }, [apply, clear]);
+
+  return <AuthContext.Provider value={{ status, user, login, register, logout, getMe, authRequest }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {
   const value = useContext(AuthContext);

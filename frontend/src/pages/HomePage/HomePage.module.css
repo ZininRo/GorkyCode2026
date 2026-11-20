@@ -1,0 +1,151 @@
+.page {
+  padding: var(--space);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logo {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.tagline {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+}
+
+.progressBox {
+  margin: 12px 0;
+}
+
+.progressBox p {
+  margin: 0 0 8px;
+}
+
+.banner {
+  margin: 12px 0 16px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-green));
+  color: #fff;
+}
+
+.banner h2 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+}
+
+.banner p {
+  margin: 0 0 14px;
+}
+
+.bannerButton {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-primary-dark);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 calc(var(--space) * -1) 12px;
+  padding: 0 var(--space) 4px;
+  overflow-x: auto;
+}
+
+.chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.chipActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.state {
+  padding: 16px 0;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Pinterest-лента: две колонки, карточки разной высоты (по пропорциям картинок), промежуток 12px. */
+.masonry {
+  column-count: 2;
+  column-gap: 12px;
+}
+
+.card {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow: hidden;
+  break-inside: avoid;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  text-align: left;
+  cursor: pointer;
+}
+
+.card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 10px;
+}
+
+.cardTitle {
+  font-weight: 600;
+}
+
+.cardCategory {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.detailImage {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius);
+}
+
+.demoNote {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.moreLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+}

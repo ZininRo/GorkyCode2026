@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="380" viewBox="0 0 400 380" role="img" aria-label="Фестиваль света (placeholder)">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b3a"/><stop offset="1" stop-color="#7f5af0"/></linearGradient></defs>
+  <rect width="400" height="380" fill="url(#g)"/>
+  <path d="M0 296 Q 100 258 200 289 T 400 274 V 380 H 0 Z" fill="#ffffff" fill-opacity="0.25"/>
+  <text x="50%" y="46%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="25" font-weight="700" fill="#ffffff">Фестиваль света</text>
+  <text x="50%" y="56%" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#ffffff" fill-opacity="0.85">demo / ev06</text>
+</svg>

@@ -1,0 +1,105 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--space);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.card {
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.card p {
+  margin: 4px 0;
+}
+
+.label,
+.muted {
+  color: var(--color-text-muted);
+}
+
+.level {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.stats div {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--color-muted-bg);
+  text-align: center;
+}
+
+.stats strong {
+  font-size: 1.4rem;
+}
+
+.stats span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dotYellow,
+.dotGreen {
+  display: inline-block;
+  margin-right: 8px;
+  transform: rotate(45deg);
+}
+
+.dotYellow {
+  width: 10px;
+  height: 10px;
+  background: var(--color-yellow);
+}
+
+.dotGreen {
+  width: 14px;
+  height: 14px;
+  background: var(--color-green);
+}
+
+.logout {
+  min-height: 48px;
+  border: 1px solid var(--color-danger);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-danger);
+  font-weight: 700;
+  cursor: pointer;
+}

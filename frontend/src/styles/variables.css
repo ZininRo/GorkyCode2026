@@ -1,0 +1,19 @@
+/* MVP-токены. Финальный дизайн команда задаст позже: меняйте только значения. */
+:root {
+  --color-bg: #f6f4ef;
+  --color-surface: #ffffff;
+  --color-text: #1f2328;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e2da;
+  --color-muted-bg: #efece5;
+  --color-primary: #1f5fbf;
+  --color-primary-dark: #174a96;
+  --color-yellow: #f2c230;
+  --color-yellow-dark: #9a7400;
+  --color-green: #2fa86b;
+  --color-green-dark: #1d6e45;
+  --color-danger: #c0362c;
+  --radius: 14px;
+  --space: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}

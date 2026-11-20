@@ -1,0 +1,28 @@
+{
+  "version": 8,
+  "name": "Нижний Новгород · RPG",
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet"
+    }
+  },
+  "layers": [
+    {"id":"ground","type":"background","paint":{"background-color":"#e6d3a2"}},
+    {"id":"landcover","type":"fill","source":"openmaptiles","source-layer":"landcover","paint":{"fill-color":"#b4bf7b","fill-opacity":0.72}},
+    {"id":"landuse","type":"fill","source":"openmaptiles","source-layer":"landuse","paint":{"fill-color":["match",["get","class"],["cemetery","grass","park","recreation_ground"],"#90ad70","#d9bc91"],"fill-opacity":0.68}},
+    {"id":"parks","type":"fill","source":"openmaptiles","source-layer":"park","paint":{"fill-color":"#93b677","fill-outline-color":"#728f53","fill-pattern":"gorky-park-pattern","fill-opacity":0.83}},
+    {"id":"water-shadow","type":"line","source":"openmaptiles","source-layer":"water","paint":{"line-color":"#769a83","line-width":5,"line-opacity":0.7}},
+    {"id":"water","type":"fill","source":"openmaptiles","source-layer":"water","paint":{"fill-color":"#74b9cb","fill-outline-color":"#548fa6"}},
+    {"id":"streams","type":"line","source":"openmaptiles","source-layer":"waterway","paint":{"line-color":"#6bb3c7","line-width":2}},
+    {"id":"building-shadows","type":"fill","source":"openmaptiles","source-layer":"building","minzoom":14,"paint":{"fill-color":"#9e755d","fill-translate":[2,3],"fill-opacity":0.85}},
+    {"id":"buildings","type":"fill","source":"openmaptiles","source-layer":"building","minzoom":14,"paint":{"fill-color":"#bb8d72","fill-outline-color":"#9f725c"}},
+    {"id":"road-outline","type":"line","source":"openmaptiles","source-layer":"transportation","filter":["in",["get","class"],["literal",["motorway","trunk","primary","secondary","tertiary","minor","service"]]],"layout":{"line-cap":"square","line-join":"bevel"},"paint":{"line-color":"#a58864","line-width":["interpolate",["linear"],["zoom"],10,2,14,5,18,17]}},
+    {"id":"roads","type":"line","source":"openmaptiles","source-layer":"transportation","filter":["in",["get","class"],["literal",["motorway","trunk","primary","secondary","tertiary","minor","service"]]],"layout":{"line-cap":"square","line-join":"bevel"},"paint":{"line-color":["match",["get","class"],["motorway","trunk","primary"],"#f9e8a9","#f8ecd2"],"line-width":["interpolate",["linear"],["zoom"],10,1,14,3,18,14]}},
+    {"id":"paths","type":"line","source":"openmaptiles","source-layer":"transportation","minzoom":14,"filter":["in",["get","class"],["literal",["path","track"]]],"paint":{"line-color":"#887956","line-width":1.5,"line-dasharray":[2,2]}},
+    {"id":"neighborhoods","type":"symbol","source":"openmaptiles","source-layer":"place","minzoom":10,"maxzoom":16,"filter":["in",["get","class"],["literal",["city","town","suburb","quarter","neighbourhood"]]],"layout":{"text-field":["coalesce",["get","name:ru"],["get","name"]],"text-font":["Noto Sans Bold"],"text-size":13,"text-letter-spacing":0.08,"text-max-width":10},"paint":{"text-color":"#514532","text-halo-color":"#efe1bd","text-halo-width":1.5}},
+    {"id":"rivers","type":"symbol","source":"openmaptiles","source-layer":"water_name","minzoom":9,"layout":{"text-field":["coalesce",["get","name:ru"],["get","name"]],"text-font":["Noto Sans Italic"],"text-size":13},"paint":{"text-color":"#25536b","text-halo-color":"#a7d5df","text-halo-width":1}},
+    {"id":"street-names","type":"symbol","source":"openmaptiles","source-layer":"transportation_name","minzoom":15,"layout":{"symbol-placement":"line","text-field":["coalesce",["get","name:ru"],["get","name"]],"text-font":["Noto Sans Regular"],"text-size":11},"paint":{"text-color":"#67553a","text-halo-color":"#f8ecd2","text-halo-width":1}}
+  ]
+}

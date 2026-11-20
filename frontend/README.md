@@ -1,32 +1,45 @@
-# React + TypeScript + Vite
+# Открывай Нижний
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Адаптивный React-интерфейс из MVP в проекте GorkyCode2026. По умолчанию он работает с Spring Boot и PostgreSQL через существующую авторизацию. Путеводитель содержит лицензированные фото и примеры мероприятий с переходом во внешнюю афишу. Авторы и лицензии указаны на странице «Источники изображений».
 
-Currently, two official plugins are available:
+## Запуск с сервером
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Из корня проекта выполните `docker compose up --build` после заполнения параметров из `.env.example`. Откройте [http://localhost:5173](http://localhost:5173). Spring Boot применяет Flyway V1–V6 автоматически.
 
-## React Compiler
+Для разработки с локальным Spring Boot на порту 8080:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+cd frontend
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Vite перенаправляет `/api` на Spring Boot. Если локальный порт отличается, задайте `GORKY_DEV_BACKEND=http://localhost:ВАШ_ПОРТ`. Для отдельного домена API можно задать `VITE_API_BASE_URL` и настроить разрешённые origin на сервере.
+
+- По умолчанию используется новый интерфейс с серверными данными.
+- `VITE_APP_MODE=demo npm run dev` включает автономное демо из предыдущего MVP.
+- `VITE_APP_MODE=legacy npm run dev` открывает исходные экраны приложения из архива, включая исходный профиль и его рекомендации.
+
+## Карты и прогресс
+
+- **Карта города** по адресу `/game` использует исходный MapLibre GL, `public/maps/config.json` и векторный RPG-стиль `public/maps/nizhny-rpg.json`. Сохраняются спрайты, кластеры, выбор маршрута, GPS и загрузка точек по видимым границам. Ссылка `/game/:checkpointId` открывает карточку точки.
+- **Карта сюжетного квеста** по адресу `/play/:id` переключается между локальным пиксельным растром OSM и исходной векторной картой MapLibre. Обе подложки используют одни WGS84-координаты из серверного состояния и одну геометрию открытых пешеходных отрезков из `public/art/map-geography.json`. Пиксельный растр спроецирован в Web Mercator. Векторным тайлам требуется доступ к OpenFreeMap.
+- **Серверный прогресс сюжетных квестов** хранится в таблицах `guided_*`. Сервер проверяет порядок и GPS перед сбором, сохраняет реакцию и открывает следующую точку. Повторные запросы на сбор и реакцию не начисляют лишние очки. Исходная карта города ведёт отдельный прогресс в существующих таблицах `game_*`.
+- **Локальная симуляция GPS** доступна при `SPRING_PROFILES_ACTIVE=local-demo`, `GAME_DEMO_MODE=true` и открытии сайта через localhost. Обычный режим использует серверные пороги радиуса и точности. Подходы на местности следует проверить перед публичным выпуском.
+
+## Серверный сценарий сюжетных квестов
+
+`GET /api/v1/guided` возвращает состояние пользователя, избранное и координаты. `POST /api/v1/guided/{quest}/start` начинает или возобновляет прохождение. Сбор и реакция отправляются в `POST /api/v1/guided/{quest}/stops/{index}/collect` и `PUT /api/v1/guided/{quest}/stops/{index}/reaction`. Индекс первой точки равен 0. Избранное обновляется через `PUT /api/v1/guided/bookmarks/{item}`. Все запросы используют токен существующей сессии.
+
+## Проверки
+
+```sh
+npm run build
+npx playwright install chromium
+npm run test:map
+npm run test:guided
+```
+
+Проверки карты выполняются на запущенном обычном стенде без симуляции. `FRONTEND_URL` задаёт адрес тестового фронтенда. `CHECK_BASEMAP=0` отключает ожидание внешних векторных тайлов в проверке `test:map`. `CHROMIUM_PATH` позволяет выбрать установленный Chromium.
+
+Данные растра и геометрии — [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright), [ODbL](https://opendatacommons.org/licenses/odbl/1-0/). Источники выгрузок перечислены в `public/art/map-source.txt`.
