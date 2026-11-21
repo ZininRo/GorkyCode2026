@@ -4,7 +4,7 @@ import { distanceMeters, GeoError, getCurrentPosition, type Position } from '../
 import { art, places, POINTS, walk, type Coordinates, type PlaceId, type Quest } from './content';
 import { count, type Journey, type Reaction } from './demo';
 import { Gem, Icon } from './icons';
-import { PixelMap } from './Map';
+import { RouteMap } from './Map';
 import { Modal } from './Modal';
 import type { QuestActions } from './guidedApi';
 
@@ -35,7 +35,6 @@ export function Play({ quest, journey, update, actions, coordinates }: {
   coordinates?: Partial<Record<PlaceId, Coordinates>>;
 }) {
   const [picked, setPicked] = useState<number | null>(null);
-  const [real, setReal] = useState(false);
   const [stage, setStage] = useState<'fact' | 'reaction' | null>(null);
   const [reaction, setReaction] = useState<Reaction | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
@@ -120,10 +119,8 @@ export function Play({ quest, journey, update, actions, coordinates }: {
     <Meter value={completed} max={quest.stops.length} />
     <div className="play-layout">
       <div className="map-area">
-        <div className="map-toolbar"><strong>Карта маршрута</strong><div className="map-toggle" aria-label="Вид карты">
-          <button aria-pressed={!real} onClick={() => setReal(false)}>Пиксельная</button><button aria-pressed={real} onClick={() => setReal(true)}>Улицы</button>
-        </div></div>
-        <PixelMap stops={visible} selected={selected} done={completed} onSelect={choose} real={real} position={position} coordinates={coordinates} />
+        <div className="map-toolbar"><strong>Карта маршрута</strong></div>
+        <RouteMap stops={visible} selected={selected} done={completed} onSelect={choose} position={position} coordinates={coordinates} />
       </div>
       <section className="play-side">
         {finished ? <div className="paper completion">

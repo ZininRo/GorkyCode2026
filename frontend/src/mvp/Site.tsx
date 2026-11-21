@@ -4,7 +4,6 @@ import { art, categories, events, osm, places, placeOrder, POINTS, quests, walk,
 import { changeJourney, count, currentProfile, enterGuest, logout, readJourney, totalScore, type Journey, type Profile } from './demo';
 import { Icon, Gem } from './icons';
 import { useAuth } from '../context/AuthContext';
-import { ProtectedRoute } from '../components/routing/ProtectedRoute';
 import { guidedApi, type GuidedSnapshot, type QuestActions } from './guidedApi';
 import { AuthForm, type ConnectedAuth } from './AuthForm';
 import { Modal } from './Modal';
@@ -55,15 +54,17 @@ function Home({ journey }: { journey: Journey }) {
   const eventCards = filter === 'Все' ? events : events.filter(event => event.category === filter);
   return <main className="shell home-page">
     <section className="hero">
-      <div className="hero-image" style={{ backgroundImage: `url(${art('hero')})` }} />
+      <div className="hero-scene">
+        <div className="hero-image" />
+        <img className="hero-mascot" src={art('nino')} alt="" />
+        <span className="hero-caption"><Icon name="pin" size={14} /> Стрелка · Ока и Волга</span>
+      </div>
       <div className="hero-content">
         <p className="eyebrow"><Icon name="pin" size={17} /> Нижний Новгород</p>
         <h1>Город ждёт<br />открытий<span>.</span></h1>
         <p>Гуляй с оленёнком НиНо, собирай кристаллы и открывай истории Нижнего.</p>
         <Link className="button gold" to={continueTo(journey)}><Icon name="compass" />{activeQuest(journey) ? 'Продолжить квест' : 'Начать квест'} <Icon name="arrow" size={18} /></Link>
       </div>
-      <img className="hero-mascot" src={art('nino')} alt="Оленёнок НиНо в красном шарфе" />
-      <span className="hero-caption"><Icon name="pin" size={14} /> Стрелка · Ока и Волга</span>
     </section>
     <section className="discover">
       <div className="discover-heading"><div><p className="eyebrow"><Icon name="spark" size={17} /> Путеводитель</p><h2>Куда пойдём?</h2></div>
@@ -251,6 +252,20 @@ interface ServerSession {
   retry: () => void;
 }
 
+function QuestAccess({ allowed, children }: { allowed: boolean; children: ReactNode }) {
+  const location = useLocation();
+  if (allowed) return children;
+
+  return <main className="shell inner-page">
+    <section className="paper quest-access" aria-labelledby="quest-access-title">
+      <span className="quest-access-icon"><Icon name="lock" size={28} /></span>
+      <h1 id="quest-access-title">Квесты доступны после входа</h1>
+      <p>Войди в аккаунт, чтобы начать маршрут и сохранить прогресс.</p>
+      <Link className="button gold" to="/login" state={{ from: location }}>Перейти ко входу</Link>
+    </section>
+  </main>;
+}
+
 function SiteContent({ server }: { server?: ServerSession }) {
   const [local, setLocal] = useState(() => server ? null : currentProfile());
   const profile = server ? server.profile : local;
@@ -263,7 +278,8 @@ function SiteContent({ server }: { server?: ServerSession }) {
   const [feedback, setFeedback] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
-  const playing = location.pathname.startsWith('/play/');
+  const canPlay = !server || Boolean(profile);
+  const playing = canPlay && location.pathname.startsWith('/play/');
   const needsJourney = playing || ['/profile', '/quests', '/my-quests'].includes(location.pathname);
   const loadingJourney = Boolean(server && profile && !server.snapshot);
 
@@ -284,7 +300,7 @@ function SiteContent({ server }: { server?: ServerSession }) {
     setFeedback('');
     try {
       if (server) {
-        if (!profile) { navigate('/login', { state: { from: { pathname: '/quests' } } }); return; }
+        if (!profile) return;
         await server.mutate(api => api.start(quest.id));
       } else {
         update(state => {
@@ -343,15 +359,13 @@ function SiteContent({ server }: { server?: ServerSession }) {
     </main> : <Routes>
       <Route index element={<Home journey={journey} />} />
       <Route path="home" element={<Navigate to="/" replace />} />
-      <Route path="quests" element={<QuestList journey={journey} start={quest => void start(quest)} busy={Boolean(server?.busy)} />} />
-      <Route path="my-quests" element={<MyQuests journey={journey} profile={profile} start={quest => void start(quest)} />} />
+      <Route path="quests" element={<QuestAccess allowed={canPlay}><QuestList journey={journey} start={quest => void start(quest)} busy={Boolean(server?.busy)} /></QuestAccess>} />
+      <Route path="my-quests" element={<QuestAccess allowed={canPlay}><MyQuests journey={journey} profile={profile} start={quest => void start(quest)} /></QuestAccess>} />
       <Route path="profile" element={<ProfilePage profile={profile} journey={journey} guest={server ? undefined : guest} onLogout={signOut} />} />
       <Route path="register" element={wrap(<AuthForm key="register" register onAuth={auth} connected={server?.commands} />)} />
       <Route path="login" element={wrap(<AuthForm key="login" register={false} onAuth={auth} connected={server?.commands} />)} />
-      {server ? <Route element={<ProtectedRoute />}>
-        <Route path="play/:id" element={<PlayRoute key={id} journey={journey} update={update} server={server} />} />
-        <Route path="game/:checkpointId?" element={<Suspense fallback={<p className="shell">Загружаем карту…</p>}><ServerMapPage /></Suspense>} />
-      </Route> : <Route path="play/:id" element={<PlayRoute journey={journey} update={update} />} />}
+      <Route path="play/:id" element={<QuestAccess allowed={canPlay}><PlayRoute key={id} journey={journey} update={update} server={server} /></QuestAccess>} />
+      {server && <Route path="game/:checkpointId?" element={<QuestAccess allowed={canPlay}><Suspense fallback={<p className="shell">Загружаем карту…</p>}><ServerMapPage /></Suspense></QuestAccess>} />}
       <Route path="place/:id" element={<Detail journey={journey} save={(item, saved) => void save(item, saved)} busy={Boolean(server?.busy || loadingJourney)} isEvent={false} />} />
       <Route path="event/:id" element={<Detail journey={journey} save={(item, saved) => void save(item, saved)} busy={Boolean(server?.busy || loadingJourney)} isEvent />} />
       <Route path="credits" element={<Credits />} />
